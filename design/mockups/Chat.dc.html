@@ -1,0 +1,77 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Ask the graph</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Instrument+Sans:wght@400;500;600&display=swap">
+<style>
+body{margin:0;font-family:'Instrument Sans',sans-serif;background:#F4F5FA;color:#12162E}
+</style>
+</helmet>
+<div style="width: 1440px; height: 900px; box-sizing: border-box; position: relative; background: #F4F5FA; overflow: hidden">
+
+  <div style="position: absolute; top: 0; left: 0; right: 0; bottom: 0; filter: blur(3px); opacity: 0.55">
+    <div style="display: flex; height: 900px">
+      <div style="width: 228px; background: #FFFFFF; border-right: 1px solid #E7EAF4"></div>
+      <div style="flex-grow: 1; padding: 26px 28px">
+        <div style="width: 300px; height: 34px; background: #E3E7F3; border-radius: 8px"></div>
+        <div style="display: flex; gap: 16px; margin-top: 24px">
+          <div style="flex: 1; height: 160px; background: #FFFFFF; border: 1px solid #E7EAF4; border-radius: 14px"></div>
+          <div style="flex: 1; height: 160px; background: #FFFFFF; border: 1px solid #E7EAF4; border-radius: 14px"></div>
+          <div style="flex: 1; height: 160px; background: #FFFFFF; border: 1px solid #E7EAF4; border-radius: 14px"></div>
+        </div>
+        <div style="width: 100%; height: 320px; background: #FFFFFF; border: 1px solid #E7EAF4; border-radius: 14px; margin-top: 16px"></div>
+      </div>
+    </div>
+  </div>
+  <div style="position: absolute; top: 0; left: 0; right: 0; bottom: 0; background: rgba(14,19,48,0.35)"></div>
+
+  <div style="position: absolute; top: 110px; left: 50%; margin-left: -370px; width: 740px; background: #FFFFFF; border-radius: 20px; box-shadow: 0 30px 80px rgba(10,15,46,0.35); overflow: hidden">
+
+    <div style="display: flex; align-items: center; gap: 12px; padding: 18px 22px; border-bottom: 1px solid #EFF1F8">
+      <span style="width: 8px; height: 8px; border-radius: 4px; background: #5B7CF0"></span>
+      <input type="text" value="which threat actors target the UAE?" aria-label="Ask the graph" style="flex-grow: 1; border: none; outline: none; font-family: 'Instrument Sans'; font-size: 16px; color: #12162E; background: transparent">
+      <span style="font-size: 11px; color: #9AA1B8; background: #F4F5FA; border: 1px solid #E7EAF4; border-radius: 6px; padding: 3px 8px">esc</span>
+    </div>
+
+    <div style="padding: 20px 22px; display: flex; flex-direction: column; gap: 14px">
+      <div style="font-size: 14px; color: #2A2F45; line-height: 1.65">
+        The graph holds one UAE-layer answer: MITRE ATT&amp;CK lists <b>36 active intrusion sets</b> referencing Middle East, Gulf or UAE targeting <span style="font-size: 11px; font-weight: 700; color: #5B7CF0; background: #EEF1FC; border-radius: 5px; padding: 2px 6px">EV-ATTACK-001</span> — including <b>Stealth Falcon</b>, which names the UAE explicitly. Named groups include MuddyWater, APT39, OilRig and POLONIUM.
+      </div>
+
+      <div style="background: #F8F9FD; border: 1px solid #E7EAF4; border-radius: 12px; padding: 13px 15px">
+        <div style="font-size: 13.5px; font-weight: 600; color: #12162E">There are 36 active intrusion sets referencing Middle East, Gulf or UAE targeting.</div>
+        <div style="display: flex; align-items: center; gap: 7px; margin-top: 9px">
+          <span style="font-size: 10px; font-weight: 700; letter-spacing: 0.6px; color: #FFFFFF; background: #1E2761; border-radius: 5px; padding: 2px 7px">TIER 1</span>
+          <span style="font-size: 10px; font-weight: 700; letter-spacing: 0.6px; color: #17693A; background: #DDF2E5; border-radius: 5px; padding: 2px 7px">CLASS A</span>
+          <span style="font-size: 10px; font-weight: 700; letter-spacing: 0.6px; color: #5B4A9E; background: #EEE9FB; border-radius: 5px; padding: 2px 7px">UAE</span>
+          <span style="flex-grow: 1"></span>
+          <span style="font-size: 11.5px; color: #8A92AE">MITRE ATT&amp;CK · 25 Sep</span>
+        </div>
+      </div>
+
+      <div style="display: flex; gap: 10px; align-items: flex-start; background: #FFF8EA; border: 1px solid #F0DFB4; border-radius: 12px; padding: 13px 15px">
+        <span style="font-size: 10px; font-weight: 700; letter-spacing: 0.8px; color: #8A6D00; background: #FBEFCF; border-radius: 5px; padding: 3px 8px; flex-shrink: 0; margin-top: 1px">VG-AI-01 · OPEN</span>
+        <div style="font-size: 12.5px; color: #4A4633; line-height: 1.55">You also asked about AI-enabled attacks on UAE systems — <b>the graph holds no UAE-layer evidence for that</b>, so I won't speculate. This gate is open pending customer validation.</div>
+      </div>
+
+      <div style="font-size: 12px; color: #9AA1B8; display: flex; align-items: center; gap: 8px">
+        <span style="width: 6px; height: 6px; border-radius: 3px; background: #4ADE80"></span>
+        Answers come only from the knowledge graph — 14 evidence rows, live. Nothing is generated from model memory.
+      </div>
+    </div>
+  </div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1440,"height":900}}'>
+class Component extends DCLogic {
+  renderVals() { return {}; }
+}
+</script>
+</body>
+</html>

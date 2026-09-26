@@ -1,0 +1,18 @@
+{
+  "v": 3,
+  "createdOnFiles": {"v": 1, "at": "2026-09-26T16:20:00Z"},
+  "title": "Foresight Console UI",
+  "launch": {"view": "canvas"},
+  "pages": [],
+  "boards": {
+    "Main.dc.html": {"x": 0, "y": 0, "w": 1440, "h": 900, "title": "Overview — aurora hero + live ticker"},
+    "Pillar.dc.html": {"x": 1520, "y": 0, "w": 1440, "h": 900, "title": "Pillar view — Cybersecurity"},
+    "Report.dc.html": {"x": 0, "y": 1020, "w": 1440, "h": 900, "title": "Generate report — pipeline live"},
+    "Chat.dc.html": {"x": 1520, "y": 1020, "w": 1440, "h": 900, "title": "Ask the graph — ⌘K panel"}
+  },
+  "order": ["Main.dc.html", "Pillar.dc.html", "Report.dc.html", "Chat.dc.html"],
+  "notes": {
+    "t1": {"x": 0, "y": -260, "text": "Foresight Console — UI direction v1", "kind": "title1", "maxW": 2960}
+  },
+  "designSystems": []
+}

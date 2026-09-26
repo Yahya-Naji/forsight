@@ -1,0 +1,95 @@
+name: pipeline
+
+# The run the console requests. /api/generate inserts a QUEUED pipeline_runs row
+# and dispatches this workflow with that row's id; each stage reports progress
+# back into it, so /generate reflects what actually ran rather than a guess.
+on:
+  workflow_dispatch:
+    inputs:
+      pillar:
+        description: "Pillar to report on"
+        required: true
+        default: CYBERSECURITY
+        type: choice
+        options: [CYBERSECURITY, AI, ELECTRONIC_WARFARE, PROCUREMENT]
+      run_id:
+        description: "pipeline_runs row id (from the console)"
+        required: false
+        type: string
+      title:
+        description: "Report title"
+        required: false
+        type: string
+
+concurrency:
+  group: pipeline-${{ inputs.pillar }}
+  cancel-in-progress: false
+
+env:
+  SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+  SUPABASE_SERVICE_KEY: ${{ secrets.SUPABASE_SERVICE_KEY }}
+  AZURE_OPENAI_ENDPOINT: ${{ secrets.AZURE_OPENAI_ENDPOINT }}
+  AZURE_OPENAI_KEY: ${{ secrets.AZURE_OPENAI_KEY }}
+  AZURE_OPENAI_DEPLOYMENT: ${{ vars.AZURE_OPENAI_DEPLOYMENT }}
+  AZURE_OPENAI_DEPLOYMENT_FAST: ${{ vars.AZURE_OPENAI_DEPLOYMENT_FAST }}
+  SERPER_API_KEY: ${{ secrets.SERPER_API_KEY }}
+  RUN_ID: ${{ inputs.run_id }}
+  PILLAR: ${{ inputs.pillar }}
+
+jobs:
+  report:
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    defaults:
+      run:
+        working-directory: pipeline
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+          cache-dependency-path: pipeline/requirements.txt
+      - run: pip install -r requirements.txt
+
+      - name: Collect
+        run: python collect.py --lane a --pillar "$PILLAR" --limit 8 --run-id "$RUN_ID"
+      - name: Extract
+        run: python extract.py --pillar "$PILLAR" --limit 12 --run-id "$RUN_ID"
+      - name: Gate 3 · corroboration merge
+        run: python decisions.py --gate 3 --pillar "$PILLAR"
+      - name: Rules
+        run: python rules.py --run-id "$RUN_ID"
+      - name: Synthesize
+        run: python synthesize.py --pillar "$PILLAR" --run-id "$RUN_ID"
+      - name: Generate
+        run: |
+          TITLE="${{ inputs.title }}"
+          python generate.py --pillar "$PILLAR" --run-id "$RUN_ID" \
+            --title "${TITLE:-$PILLAR baseline}"
+
+      # Verification decides DONE vs FAILED on the run row, so it must not be
+      # skipped when generation produced a report with blocking failures.
+      - name: Verify
+        run: |
+          RID=$(python -c "
+          import sys; sys.path.insert(0,'.')
+          from config import db
+          print(db().table('reports').select('id').order('created_at',desc=True).limit(1).execute().data[0]['id'])")
+          python verify.py --report "$RID" --run-id "$RUN_ID" --json ../out/violations.json
+
+      - name: Mark the run failed if any step above failed
+        if: failure()
+        run: |
+          python -c "
+          import os, sys; sys.path.insert(0,'.')
+          import config
+          config.update_run(os.environ.get('RUN_ID'), status='FAILED',
+                            error='workflow step failed — see the Actions log')"
+
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: report-${{ inputs.pillar }}
+          path: out/
+          if-no-files-found: ignore

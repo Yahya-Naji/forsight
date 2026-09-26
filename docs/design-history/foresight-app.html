@@ -1,0 +1,542 @@
+<title>Foresight Console</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap">
+
+<style>
+:root{
+  --ground:#0C1216; --panel:#121B21; --raised:#19242C; --sunken:#090E11; --hover:#1E2A33;
+  --line:#24313A; --line-soft:#182229;
+  --ink:#DAE5EB; --ink-dim:#A3B5C2; --muted:#74899A; --faint:#4C5F6D;
+  --accent:#3FB8C4; --accent-dim:#2A8A94; --accent-ghost:rgba(63,184,196,.11);
+  --amber:#DFA13C; --red:#D65F58; --green:#55A97A;
+  --t1:#3FB8C4; --t2:#4E92A8; --t3:#55738A; --t4:#4A5D6B;
+  --mono:"IBM Plex Mono",ui-monospace,Menlo,Consolas,monospace;
+  --sans:"Archivo",system-ui,-apple-system,"Segoe UI",sans-serif;
+  --ez:cubic-bezier(.2,.9,.3,1);
+}
+*{box-sizing:border-box}
+body{margin:0;background:var(--ground);color:var(--ink);font-family:var(--sans);font-size:13px;-webkit-font-smoothing:antialiased}
+h1,h2,h3{margin:0;font-weight:600;letter-spacing:-.01em;text-wrap:balance}
+p{margin:0}
+button{font-family:inherit;cursor:pointer}
+:focus-visible{outline:2px solid var(--accent);outline-offset:1px}
+.mono{font-family:var(--mono)}
+.num{font-variant-numeric:tabular-nums}
+.lbl{font-family:var(--mono);font-size:9.5px;font-weight:500;letter-spacing:.15em;text-transform:uppercase;color:var(--muted)}
+
+/* ══ app chrome ══ */
+.app{display:grid;grid-template-rows:46px 1fr;height:820px;max-height:92vh;border:1px solid var(--line);border-radius:6px;overflow:hidden;background:var(--ground);margin:14px auto;max-width:1280px}
+.top{display:flex;align-items:center;gap:18px;padding:0 16px;border-bottom:1px solid var(--line);background:var(--panel)}
+.brand{display:flex;align-items:center;gap:9px}
+.brand i{width:3px;height:17px;background:var(--accent)}
+.brand span{font-family:var(--mono);font-size:11.5px;letter-spacing:.2em}
+.pill-sel{display:flex;gap:2px;background:var(--sunken);border:1px solid var(--line);border-radius:3px;padding:2px}
+.pill-sel button{font-family:var(--mono);font-size:10px;letter-spacing:.06em;background:none;border:0;color:var(--muted);padding:4px 9px;border-radius:2px;transition:.14s}
+.pill-sel button.on{background:var(--raised);color:var(--accent)}
+.pill-sel button:hover{color:var(--ink)}
+.top .sp{flex:1}
+.gate-ind{display:flex;align-items:center;gap:7px;font-family:var(--mono);font-size:10.5px;color:var(--amber);border:1px solid rgba(223,161,60,.34);background:rgba(223,161,60,.08);padding:4px 9px;border-radius:3px}
+.gate-ind .d{width:6px;height:6px;border-radius:50%;background:var(--amber)}
+@media(prefers-reduced-motion:no-preference){.gate-ind .d{animation:bp 2.4s var(--ez) infinite}}
+@keyframes bp{0%,100%{opacity:1}50%{opacity:.34}}
+.live{font-family:var(--mono);font-size:10px;color:var(--green)}
+
+.body{display:grid;grid-template-columns:186px minmax(0,1fr);min-height:0}
+.rail{border-right:1px solid var(--line);background:var(--panel);padding:12px 0;overflow-y:auto;display:flex;flex-direction:column;gap:2px}
+.rail .lbl{padding:10px 14px 5px}
+.nav{display:flex;align-items:center;justify-content:space-between;gap:8px;padding:7px 14px;color:var(--muted);border-left:2px solid transparent;background:none;border-top:0;border-right:0;border-bottom:0;width:100%;text-align:left;font-size:12.5px;transition:.14s}
+.nav:hover{color:var(--ink);background:var(--hover)}
+.nav.on{color:var(--ink);border-left-color:var(--accent);background:var(--raised)}
+.nav .c{font-family:var(--mono);font-size:10.5px;color:var(--faint)}
+.nav.on .c{color:var(--accent)}
+
+.main{overflow-y:auto;padding:20px 22px 40px;min-width:0}
+.view{display:none}
+.view.on{display:block}
+.vh{display:flex;align-items:baseline;justify-content:space-between;gap:16px;margin-bottom:4px;flex-wrap:wrap}
+.vh h2{font-size:19px}
+.vsub{color:var(--muted);font-size:12.5px;margin-bottom:18px}
+
+/* ══ pieces ══ */
+.tiles{display:grid;grid-template-columns:repeat(auto-fit,minmax(138px,1fr));gap:10px;margin-bottom:18px}
+.tile{background:var(--panel);border:1px solid var(--line);border-radius:4px;padding:12px 13px}
+.tile .v{font-size:25px;font-weight:700;letter-spacing:-.02em;font-variant-numeric:tabular-nums;line-height:1.1}
+.tile .k{margin-top:3px}
+.tile .x{font-family:var(--mono);font-size:9.5px;color:var(--faint);margin-top:5px}
+.tile.acc .v{color:var(--accent)}
+.tile.amb .v{color:var(--amber)}
+
+.card{background:var(--panel);border:1px solid var(--line);border-radius:4px;padding:14px;margin-bottom:14px}
+.card-h{display:flex;align-items:center;justify-content:space-between;gap:12px;padding-bottom:9px;margin-bottom:11px;border-bottom:1px solid var(--line-soft)}
+.cols{display:grid;grid-template-columns:repeat(auto-fit,minmax(290px,1fr));gap:14px}
+
+.btn{font-family:var(--mono);font-size:10px;letter-spacing:.07em;text-transform:uppercase;background:var(--raised);color:var(--ink-dim);border:1px solid var(--line);border-radius:3px;padding:5px 10px;transition:.14s}
+.btn:hover{border-color:var(--accent);color:var(--accent)}
+
+/* tier chip */
+.tc{font-family:var(--mono);font-size:9.5px;padding:2px 5px;border-radius:2px;border:1px solid;white-space:nowrap}
+.tc.t1{color:var(--t1);border-color:rgba(63,184,196,.4)}
+.tc.t2{color:var(--t2);border-color:rgba(78,146,168,.4)}
+.tc.t3{color:var(--t3);border-color:rgba(85,115,138,.5)}
+.tc.t4{color:var(--t4);border-color:rgba(74,93,107,.55)}
+.cls{font-family:var(--mono);font-size:10px;font-weight:600}
+.cls.A{color:var(--accent)}.cls.B{color:var(--t2)}.cls.C{color:var(--amber)}.cls.D{color:var(--muted)}
+
+/* tables */
+.tw{overflow-x:auto}
+table{width:100%;border-collapse:collapse;font-size:12.5px}
+th{text-align:left;font-family:var(--mono);font-size:9.5px;letter-spacing:.13em;text-transform:uppercase;color:var(--muted);font-weight:500;padding:0 12px 7px 0;border-bottom:1px solid var(--line);white-space:nowrap}
+td{padding:8px 12px 8px 0;border-bottom:1px solid var(--line-soft);color:var(--ink-dim);vertical-align:top}
+tbody tr{transition:background .12s}
+tbody tr:hover{background:var(--hover)}
+tbody tr.clk{cursor:pointer}
+td.id{font-family:var(--mono);font-size:11.5px;color:var(--ink);white-space:nowrap}
+
+/* pipeline */
+.pipe{display:flex;align-items:center;overflow-x:auto;padding:6px 0 2px}
+.stg{flex:0 0 auto;text-align:center;min-width:56px}
+.stg .d{width:8px;height:8px;border-radius:50%;background:var(--line);margin:0 auto 6px;transition:.2s var(--ez)}
+.stg .n{font-family:var(--mono);font-size:9px;color:var(--faint);transition:.2s}
+.stg.on .d{background:var(--accent);box-shadow:0 0 0 4px var(--accent-ghost)}
+.stg.on .n{color:var(--ink)}
+.stg.done .d{background:var(--accent-dim)}
+.stg.done .n{color:var(--muted)}
+.lnk{flex:1 1 14px;min-width:10px;height:1px;background:var(--line);margin:0 4px 15px;position:relative}
+.lnk::after{content:"";position:absolute;inset:0;background:var(--accent-dim);transform:scaleX(0);transform-origin:left;transition:transform .3s linear}
+.lnk.on::after{transform:scaleX(1)}
+
+/* gates */
+.gate{display:flex;gap:11px;padding:11px;background:var(--sunken);border:1px solid rgba(223,161,60,.26);border-left:2px solid var(--amber);border-radius:3px;margin-bottom:8px}
+.gate .gi{font-family:var(--mono);font-size:11px;color:var(--amber);white-space:nowrap}
+.gate .gb{font-size:12px;color:var(--ink-dim);line-height:1.45}
+.gate .gr{font-family:var(--mono);font-size:9.5px;color:var(--faint);margin-top:3px}
+
+/* threat cards */
+.tg{display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:9px}
+.ta{background:var(--panel);border:1px solid var(--line);border-radius:3px;padding:10px 11px;transition:.15s var(--ez);cursor:pointer}
+.ta:hover{border-color:var(--accent-dim);transform:translateY(-1px)}
+.ta.uae{border-color:rgba(223,161,60,.45);background:rgba(223,161,60,.05)}
+.ta .tn{font-size:13px;font-weight:600;color:var(--ink)}
+.ta .tid{font-family:var(--mono);font-size:9.5px;color:var(--faint);margin-top:2px}
+.ta .tm{display:flex;flex-wrap:wrap;gap:3px;margin-top:7px}
+.ta .tm span{font-family:var(--mono);font-size:8.5px;text-transform:uppercase;letter-spacing:.06em;color:var(--t3);border:1px solid var(--line);border-radius:2px;padding:1px 4px}
+.ta.uae .tm span.hi{color:var(--amber);border-color:rgba(223,161,60,.45)}
+
+/* report */
+.rep{max-width:70ch}
+.rep h3{font-size:15px;margin:20px 0 8px;color:var(--ink)}
+.rep h3:first-child{margin-top:0}
+.rep p{font-size:13.5px;line-height:1.72;color:var(--ink-dim);margin-bottom:11px}
+.cite{font-family:var(--mono);font-size:10.5px;color:var(--accent);background:var(--accent-ghost);border:1px solid rgba(63,184,196,.3);border-radius:2px;padding:1px 4px;cursor:pointer;transition:.13s;white-space:nowrap}
+.cite:hover{background:rgba(63,184,196,.24)}
+.blocked{position:relative;padding:13px;background:var(--sunken);border:1px solid rgba(223,161,60,.3);border-radius:3px;margin-bottom:11px;overflow:hidden}
+.blocked p{filter:blur(4px);opacity:.3;margin:0;user-select:none}
+.blocked .stmp{position:absolute;inset:0;display:grid;place-items:center}
+.blocked .stmp span{font-family:var(--mono);font-size:10.5px;font-weight:600;letter-spacing:.15em;text-transform:uppercase;color:var(--amber);border:2px solid var(--amber);border-radius:3px;padding:6px 12px;background:rgba(9,14,17,.86);transform:rotate(-3.5deg)}
+.vbar{display:flex;flex-wrap:wrap;gap:16px;padding:10px 13px;background:var(--sunken);border:1px solid var(--line);border-left:2px solid var(--green);border-radius:3px;margin-bottom:16px}
+.vbar div{font-family:var(--mono);font-size:10.5px;color:var(--muted)}
+.vbar b{color:var(--green);font-weight:600}
+
+/* graph */
+.gwrap{background:var(--sunken);border:1px solid var(--line);border-radius:4px;overflow:hidden}
+.gnode{cursor:pointer}
+.gnode circle,.gnode rect{transition:.18s var(--ez)}
+.gnode:hover circle,.gnode:hover rect{stroke:var(--accent);stroke-width:1.6}
+.gnode text{font-family:var(--mono);font-size:8.5px;fill:var(--ink-dim);pointer-events:none}
+
+/* drawer */
+.drw{position:absolute;top:46px;bottom:0;right:0;width:330px;background:var(--panel);border-left:1px solid var(--line);transform:translateX(100%);transition:transform .3s var(--ez);overflow-y:auto;z-index:5}
+.drw.on{transform:none}
+.drw-h{display:flex;align-items:center;justify-content:space-between;padding:12px 14px;border-bottom:1px solid var(--line);position:sticky;top:0;background:var(--panel)}
+.drw-h button{background:none;border:0;color:var(--muted);font-size:17px;line-height:1;padding:0 3px}
+.drw-h button:hover{color:var(--ink)}
+.drw-b{padding:14px}
+.fld{margin-bottom:14px}
+.fld .fv{font-size:12.5px;color:var(--ink-dim);line-height:1.6;margin-top:4px}
+.quote{font-family:var(--mono);font-size:11px;line-height:1.65;color:var(--ink);background:var(--sunken);border-left:2px solid var(--accent);border-radius:0 3px 3px 0;padding:9px 11px;margin-top:5px;word-break:break-word}
+.ladder{display:flex;flex-direction:column-reverse;gap:2px;margin-top:5px}
+.rung{display:flex;align-items:center;gap:9px;padding:4px 7px;border-radius:2px;border:1px solid transparent}
+.rung .b{width:32px;height:4px;border-radius:1px;opacity:.32}
+.rung .t{font-family:var(--mono);font-size:9.5px;color:var(--faint)}
+.rung.on{background:var(--raised);border-color:var(--line)}
+.rung.on .b{opacity:1}
+.rung.on .t{color:var(--ink)}
+.chainv{display:flex;flex-direction:column;gap:0;margin-top:5px}
+.cn{font-family:var(--mono);font-size:10px;padding:6px 8px;border:1px solid var(--line);border-radius:2px;background:var(--sunken);color:var(--faint);transition:.22s var(--ez)}
+.cn.lit{color:var(--ground);background:var(--accent);border-color:var(--accent)}
+.cv{width:1px;height:9px;background:var(--line);margin-left:13px}
+.rule{font-family:var(--mono);font-size:10px;color:var(--accent);background:var(--accent-ghost);border:1px solid rgba(63,184,196,.26);border-radius:2px;padding:5px 8px;margin-top:5px}
+.appwrap{position:relative}
+.prev{font-family:var(--mono);font-size:9px;letter-spacing:.1em;color:var(--amber);border:1px solid rgba(223,161,60,.4);border-radius:2px;padding:2px 5px}
+@media(prefers-reduced-motion:reduce){*{transition-duration:.01ms!important;animation-duration:.01ms!important}}
+</style>
+
+<div class="app appwrap">
+
+  <div class="top">
+    <div class="brand"><i></i><span>FORESIGHT</span></div>
+    <div class="pill-sel" id="psel">
+      <button class="on" data-p="CYBERSECURITY">CYBER</button>
+      <button data-p="AI">AI</button>
+      <button data-p="ELECTRONIC_WARFARE">EW</button>
+      <button data-p="PROCUREMENT">PROC</button>
+    </div>
+    <div class="sp"></div>
+    <div class="live">● live · asfxhuznwfyqzxifakim</div>
+    <div class="gate-ind"><span class="d"></span>4 GATES OPEN</div>
+  </div>
+
+  <div class="body">
+    <nav class="rail">
+      <div class="lbl">Workspace</div>
+      <button class="nav on" data-v="over">Overview</button>
+      <button class="nav" data-v="ev">Evidence <span class="c">2</span></button>
+      <button class="nav" data-v="thr">Threat picture <span class="c">56</span></button>
+      <button class="nav" data-v="rep">Report <span class="c">1</span></button>
+      <button class="nav" data-v="gr">Ontology</button>
+      <button class="nav" data-v="src">Sources <span class="c">27</span></button>
+      <div class="lbl" style="margin-top:12px">Pipeline</div>
+      <button class="nav" data-v="trace">Generation trace</button>
+      <button class="nav" data-v="ver">Verification</button>
+    </nav>
+
+    <div class="main">
+
+      <!-- ════ OVERVIEW ════ -->
+      <div class="view on" id="v-over">
+        <div class="vh"><h2>Cybersecurity</h2><button class="btn" id="run">Ingest document</button></div>
+        <p class="vsub">UAE strategic foresight · pillar baseline from 27 registered sources across three collection lanes.</p>
+
+        <div class="tiles">
+          <div class="tile"><div class="v num">22</div><div class="k lbl">Documents</div><div class="x">9 T1 · 9 T3 · 4 T4</div></div>
+          <div class="tile acc"><div class="v num">56</div><div class="k lbl">Entities</div><div class="x">36 actors · 20 CVEs</div></div>
+          <div class="tile"><div class="v num">2</div><div class="k lbl">Evidence</div><div class="x">both Class A</div></div>
+          <div class="tile amb"><div class="v num">4</div><div class="k lbl">Open gates</div><div class="x">all pillars</div></div>
+          <div class="tile"><div class="v num">0</div><div class="k lbl">Signals</div><div class="x">awaiting synthesis</div></div>
+        </div>
+
+        <div class="card">
+          <div class="card-h"><span class="lbl">Pipeline</span><span class="mono" style="font-size:10px;color:var(--faint)" id="pst">idle</span></div>
+          <div class="pipe" id="pipe">
+            <div class="stg"><div class="d"></div><div class="n">collect</div></div><div class="lnk"></div>
+            <div class="stg"><div class="d"></div><div class="n">jev 1</div></div><div class="lnk"></div>
+            <div class="stg"><div class="d"></div><div class="n">extract</div></div><div class="lnk"></div>
+            <div class="stg"><div class="d"></div><div class="n">jev 2</div></div><div class="lnk"></div>
+            <div class="stg"><div class="d"></div><div class="n">rules</div></div><div class="lnk"></div>
+            <div class="stg"><div class="d"></div><div class="n">synthesize</div></div><div class="lnk"></div>
+            <div class="stg"><div class="d"></div><div class="n">generate</div></div><div class="lnk"></div>
+            <div class="stg"><div class="d"></div><div class="n">verify</div></div>
+          </div>
+        </div>
+
+        <div class="cols">
+          <div class="card">
+            <div class="card-h"><span class="lbl">Open validation gates</span></div>
+            <div class="gate"><span class="gi">VG-CY-01</span><div><div class="gb">Any UAE-specific capability-gap claim for pillar CYBERSECURITY</div><div class="gr">raised by uae_inference_guard · no UAE-layer Class A/B evidence</div></div></div>
+            <div class="gate"><span class="gi">VG-AI-01</span><div><div class="gb">Any UAE-specific capability-gap claim for pillar AI</div><div class="gr">raised by uae_inference_guard</div></div></div>
+            <div class="gate"><span class="gi">VG-EL-01</span><div><div class="gb">Any UAE-specific capability-gap claim for pillar ELECTRONIC_WARFARE</div><div class="gr">raised by uae_inference_guard</div></div></div>
+            <div class="gate"><span class="gi">VG-PR-01</span><div><div class="gb">Any UAE-specific capability-gap claim for pillar PROCUREMENT</div><div class="gr">raised by uae_inference_guard</div></div></div>
+          </div>
+
+          <div class="card">
+            <div class="card-h"><span class="lbl">Recently collected</span><span class="mono" style="font-size:10px;color:var(--faint)">lane A · 03:17</span></div>
+            <div class="tw"><table><tbody>
+              <tr><td><span class="tc t1">T1</span></td><td>MITRE ATT&amp;CK Enterprise (STIX)</td></tr>
+              <tr><td><span class="tc t1">T1</span></td><td>NIST National Vulnerability Database</td></tr>
+              <tr><td><span class="tc t3">T3</span></td><td>Beyond the ransomware: Tracking Storm-2570</td></tr>
+              <tr><td><span class="tc t3">T3</span></td><td>Inside the Modern SOC: Cross-Environment Pivot</td></tr>
+              <tr><td><span class="tc t3">T3</span></td><td>Reimagining the SOC for the agentic era</td></tr>
+              <tr><td><span class="tc t4">T4</span></td><td>Russian hybrid attacks likely to increase</td></tr>
+              <tr><td><span class="tc t4">T4</span></td><td>How China is rethinking tank survival vs FPVs</td></tr>
+            </tbody></table></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ════ EVIDENCE ════ -->
+      <div class="view" id="v-ev">
+        <div class="vh"><h2>Evidence register</h2></div>
+        <p class="vsub">Every row is a typed, sourced claim. Class and confidence are assigned by <span class="mono">rules.py</span> — never by the model. Click a row for provenance.</p>
+        <div class="card">
+          <div class="tw"><table>
+            <thead><tr><th>ID</th><th>Claim</th><th>Class</th><th>Conf</th><th>Layer</th><th>Sources</th></tr></thead>
+            <tbody>
+              <tr class="clk" data-ev="attack"><td class="id">EV-ATTACK-001</td><td>MITRE ATT&amp;CK lists 176 active intrusion sets, of which 36 reference Middle East, Gulf or UAE targeting.</td><td><span class="cls A">A</span></td><td class="mono" style="font-size:10.5px">HIGH</td><td class="mono" style="font-size:10.5px">GLOBAL</td><td><span class="tc t1">T1</span></td></tr>
+              <tr class="clk" data-ev="nvd"><td class="id">EV-NVD-001</td><td>NVD returns 20 distinct CVE records across control-system and navigation keywords relevant to connected defence architectures.</td><td><span class="cls A">A</span></td><td class="mono" style="font-size:10.5px">HIGH</td><td class="mono" style="font-size:10.5px">GLOBAL</td><td><span class="tc t1">T1</span></td></tr>
+            </tbody>
+          </table></div>
+        </div>
+        <div class="card">
+          <div class="card-h"><span class="lbl">Research gaps</span><span class="mono" style="font-size:10px;color:var(--faint)">0 recorded</span></div>
+          <p style="color:var(--muted);font-size:12.5px">Claims the rules engine refused to admit appear here. What the evidence could not support is itself a finding.</p>
+        </div>
+      </div>
+
+      <!-- ════ THREATS ════ -->
+      <div class="view" id="v-thr">
+        <div class="vh"><h2>Threat picture</h2><span class="mono" style="font-size:10.5px;color:var(--muted)">Lane C · structured, no LLM in path</span></div>
+        <p class="vsub">36 of 176 ATT&amp;CK intrusion sets reference Middle East, Gulf or UAE targeting. Loaded directly as typed entities.</p>
+
+        <div class="card">
+          <div class="card-h"><span class="lbl">Intrusion sets · regional</span><span class="mono" style="font-size:10px;color:var(--amber)">1 explicitly UAE</span></div>
+          <div class="tg">
+            <div class="ta uae"><div class="tn">Stealth Falcon</div><div class="tid">CS-THREAT-G0038</div><div class="tm"><span class="hi">UAE</span><span class="hi">United Arab Emirates</span></div></div>
+            <div class="ta"><div class="tn">MuddyWater</div><div class="tid">CS-THREAT-G0069</div><div class="tm"><span>Middle East</span><span>UAE</span></div></div>
+            <div class="ta"><div class="tn">Leafminer</div><div class="tid">CS-THREAT-G0077</div><div class="tm"><span>Middle East</span><span>Iran</span></div></div>
+            <div class="ta"><div class="tn">CURIUM</div><div class="tid">CS-THREAT-G1012</div><div class="tm"><span>Middle East</span><span>Iran</span></div></div>
+            <div class="ta"><div class="tn">APT39</div><div class="tid">CS-THREAT-G0087</div><div class="tm"><span>Iran</span></div></div>
+            <div class="ta"><div class="tn">APT-C-23</div><div class="tid">CS-THREAT-G1028</div><div class="tm"><span>Middle East</span><span>Israel</span></div></div>
+            <div class="ta"><div class="tn">Gallmaker</div><div class="tid">CS-THREAT-G0084</div><div class="tm"><span>Middle East</span></div></div>
+            <div class="ta"><div class="tn">Strider</div><div class="tid">CS-THREAT-G0041</div><div class="tm"><span>Iran</span></div></div>
+          </div>
+          <p style="margin-top:11px;font-family:var(--mono);font-size:10px;color:var(--faint)">+ 28 more · OilRig, POLONIUM, Moses Staff, DarkHydrus, Ferocious Kitten…</p>
+        </div>
+
+        <div class="card">
+          <div class="card-h"><span class="lbl">Vulnerabilities · control-system &amp; navigation keywords</span><span class="mono" style="font-size:10px;color:var(--faint)">last 120 days</span></div>
+          <div class="tw"><table>
+            <thead><tr><th>CVE</th><th>CVSS</th><th>Matched keyword</th></tr></thead>
+            <tbody>
+              <tr><td class="id">CVE-2025-71318</td><td><span class="mono num" style="color:var(--red);font-size:12px">9.8</span></td><td class="mono" style="font-size:11px">command and control</td></tr>
+              <tr><td class="id">CVE-2026-10796</td><td><span class="mono num" style="color:var(--amber);font-size:12px">7.5</span></td><td class="mono" style="font-size:11px">command and control</td></tr>
+              <tr><td class="id">CVE-2025-7639</td><td><span class="mono num" style="color:var(--amber);font-size:12px">7.1</span></td><td class="mono" style="font-size:11px">SCADA</td></tr>
+              <tr><td class="id">CVE-2026-10057</td><td><span class="mono num" style="color:var(--t2);font-size:12px">4.8</span></td><td class="mono" style="font-size:11px">SCADA</td></tr>
+              <tr><td class="id">CVE-2026-10058</td><td><span class="mono num" style="color:var(--t2);font-size:12px">4.8</span></td><td class="mono" style="font-size:11px">SCADA</td></tr>
+            </tbody>
+          </table></div>
+        </div>
+      </div>
+
+      <!-- ════ REPORT ════ -->
+      <div class="view" id="v-rep">
+        <div class="vh"><h2>Cyber Threat Baseline — UAE</h2><span class="prev">PREVIEW · pending first generation run</span></div>
+        <p class="vsub">Drafted section by section from linked graph rows only. Click any citation.</p>
+
+        <div class="vbar">
+          <div>citation faithfulness <b>1.00</b></div>
+          <div>unsourced assertions <b>0</b></div>
+          <div>gate violations <b>0</b></div>
+          <div>status <b>GATES_OPEN</b></div>
+        </div>
+
+        <div class="rep">
+          <h3>What is changing</h3>
+          <p>The regional intrusion-set landscape is concentrated rather than diffuse. MITRE ATT&amp;CK lists 176 active intrusion sets, of which 36 reference Middle East, Gulf or UAE targeting in their threat descriptions <span class="cite" data-ev="attack">EV-ATTACK-001</span>. One of these, Stealth Falcon, names the United Arab Emirates explicitly in its targeting description.</p>
+          <p>Connected defence architectures inherit the vulnerability surface of their control and navigation components. NVD returns 20 distinct CVE records across command-and-control, UAV, GNSS and SCADA keywords in the last 120 days <span class="cite" data-ev="nvd">EV-NVD-001</span>, the most severe scoring 9.8.</p>
+
+          <h3>What it means for the UAE</h3>
+          <div class="blocked"><p>The UAE lacks adequate detection coverage against regionally-active intrusion sets targeting defence infrastructure, creating a material readiness gap.</p><div class="stmp"><span>Customer validation required</span></div></div>
+          <p style="font-size:12.5px;color:var(--muted)">VG-CY-01 is OPEN. No UAE-layer Class A or B evidence exists in the register, so the transfer from global evidence to a UAE conclusion is not permitted. The claim above is withheld, not asserted.</p>
+
+          <h3>References</h3>
+          <p class="mono" style="font-size:11px;line-height:1.9;color:var(--muted)">[EV-ATTACK-001] MITRE ATT&amp;CK Enterprise (STIX) — Tier 1<br>[EV-NVD-001] NIST National Vulnerability Database — Tier 1</p>
+        </div>
+      </div>
+
+      <!-- ════ ONTOLOGY ════ -->
+      <div class="view" id="v-gr">
+        <div class="vh"><h2>Ontology</h2><span class="mono" style="font-size:10.5px;color:var(--muted)">typed objects · typed links</span></div>
+        <p class="vsub">Not a prompt — a graph. Every edge is a typed relation and every score has a named rule behind it.</p>
+        <div class="gwrap">
+          <svg viewBox="0 0 860 400" width="100%" height="390" role="img" aria-label="Ontology graph">
+            <defs><marker id="ar" markerWidth="7" markerHeight="7" refX="6" refY="3" orient="auto"><path d="M0,0 L6,3 L0,6 z" fill="#2A8A94"/></marker></defs>
+            <g stroke="#2A8A94" stroke-width="1" fill="none" marker-end="url(#ar)" opacity=".75">
+              <path d="M138,86 L246,110"/><path d="M138,300 L246,272"/>
+              <path d="M352,110 L452,96"/><path d="M352,272 L452,286"/>
+              <path d="M352,118 L452,250"/>
+              <path d="M560,96 L660,150"/><path d="M560,286 L660,170"/>
+            </g>
+            <path d="M700,196 L700,244" stroke="#DFA13C" stroke-width="1" stroke-dasharray="3 3" fill="none"/>
+
+            <g class="gnode"><rect x="40" y="70" width="98" height="32" rx="3" fill="#121B21" stroke="#3FB8C4"/><text x="52" y="84">SRC-T1-009</text><text x="52" y="95" fill="#74899A">MITRE · T1</text></g>
+            <g class="gnode"><rect x="40" y="284" width="98" height="32" rx="3" fill="#121B21" stroke="#3FB8C4"/><text x="52" y="298">SRC-T1-008</text><text x="52" y="309" fill="#74899A">NVD · T1</text></g>
+
+            <g class="gnode"><rect x="246" y="94" width="106" height="32" rx="3" fill="#19242C" stroke="#24313A"/><text x="258" y="108">EV-ATTACK-001</text><text x="258" y="119" fill="#3FB8C4">Class A · HIGH</text></g>
+            <g class="gnode"><rect x="246" y="256" width="106" height="32" rx="3" fill="#19242C" stroke="#24313A"/><text x="258" y="270">EV-NVD-001</text><text x="258" y="281" fill="#3FB8C4">Class A · HIGH</text></g>
+
+            <g class="gnode"><circle cx="490" cy="96" r="30" fill="#121B21" stroke="#4E92A8"/><text x="466" y="94">36 actors</text><text x="470" y="105" fill="#74899A">entity</text></g>
+            <g class="gnode"><circle cx="490" cy="286" r="30" fill="#121B21" stroke="#4E92A8"/><text x="470" y="284">20 CVEs</text><text x="470" y="295" fill="#74899A">entity</text></g>
+
+            <g class="gnode"><rect x="648" y="132" width="104" height="34" rx="3" fill="#19242C" stroke="#24313A"/><text x="660" y="146">SIG-CY-01</text><text x="660" y="158" fill="#4C5F6D">awaiting synthesis</text></g>
+            <g class="gnode"><rect x="648" y="244" width="104" height="34" rx="3" fill="rgba(223,161,60,.07)" stroke="#DFA13C"/><text x="660" y="258" fill="#DFA13C">VG-CY-01</text><text x="660" y="270" fill="#74899A">gate · OPEN</text></g>
+
+            <text x="40" y="360" font-family="IBM Plex Mono" font-size="9.5" fill="#4C5F6D">source → evidence → entity → signal · gate blocks the UAE transfer</text>
+          </svg>
+        </div>
+      </div>
+
+      <!-- ════ SOURCES ════ -->
+      <div class="view" id="v-src">
+        <div class="vh"><h2>Source registry</h2><span class="mono" style="font-size:10.5px;color:var(--muted)">27 registered</span></div>
+        <p class="vsub">The corpus is governed, not scraped at random. Tier decides evidence class downstream.</p>
+        <div class="cols">
+          <div class="card"><div class="card-h"><span class="lbl">Lane A · scheduled</span><span class="mono" style="font-size:10px;color:var(--green)">✓ 20 docs</span></div>
+            <div class="tw"><table><tbody>
+              <tr><td><span class="tc t1">T1</span></td><td>US Department of Defense</td><td class="mono" style="font-size:10px;color:var(--faint)">rss</td></tr>
+              <tr><td><span class="tc t1">T1</span></td><td>UK NCSC</td><td class="mono" style="font-size:10px;color:var(--faint)">rss</td></tr>
+              <tr><td><span class="tc t1">T1</span></td><td>UAE TDRA / aeCERT</td><td class="mono" style="font-size:10px;color:var(--faint)">scrape</td></tr>
+              <tr><td><span class="tc t3">T3</span></td><td>Cisco Talos</td><td class="mono" style="font-size:10px;color:var(--faint)">rss</td></tr>
+              <tr><td><span class="tc t3">T3</span></td><td>Microsoft Security</td><td class="mono" style="font-size:10px;color:var(--faint)">rss</td></tr>
+              <tr><td><span class="tc t4">T4</span></td><td>Gulf News UAE</td><td class="mono" style="font-size:10px;color:var(--faint)">scrape</td></tr>
+            </tbody></table></div>
+          </div>
+          <div class="card"><div class="card-h"><span class="lbl">Lane C · structured</span><span class="mono" style="font-size:10px;color:var(--green)">✓ 56 entities</span></div>
+            <div class="tw"><table><tbody>
+              <tr><td><span class="tc t1">T1</span></td><td>MITRE ATT&amp;CK STIX</td><td class="mono" style="font-size:10px;color:var(--accent)">36</td></tr>
+              <tr><td><span class="tc t1">T1</span></td><td>NIST NVD</td><td class="mono" style="font-size:10px;color:var(--accent)">20</td></tr>
+            </tbody></table></div>
+            <div class="card-h" style="margin-top:14px"><span class="lbl">Reachability</span></div>
+            <div class="tw"><table><tbody>
+              <tr><td class="mono" style="font-size:10px;color:var(--amber)">403</td><td>NATO NCIA — reached via site search</td></tr>
+              <tr><td class="mono" style="font-size:10px;color:var(--amber)">TLS</td><td>UAE CSC — reached via site search</td></tr>
+              <tr><td class="mono" style="font-size:10px;color:var(--faint)">⊘</td><td>Janes — paywalled, decision pending</td></tr>
+            </tbody></table></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ════ TRACE ════ -->
+      <div class="view" id="v-trace">
+        <div class="vh"><h2>Generation trace</h2><span class="prev">PREVIEW</span></div>
+        <p class="vsub">What the model was given — and what it was deliberately denied.</p>
+        <div class="card">
+          <div class="card-h"><span class="lbl">Section 1 · What is changing</span><span class="mono" style="font-size:10px;color:var(--green)">✓ verified</span></div>
+          <div class="tw"><table><tbody>
+            <tr><td class="id" style="width:150px">inputs declared</td><td class="mono" style="font-size:11px">evidence, signals</td></tr>
+            <tr><td class="id">rows passed</td><td class="mono" style="font-size:11px">2 evidence · 0 signals</td></tr>
+            <tr><td class="id">rows withheld</td><td class="mono" style="font-size:11px;color:var(--amber)">0 — fetch_inputs does not yet honour section links</td></tr>
+            <tr><td class="id">instruction</td><td style="font-size:12px">“Only Class A/B evidence may be stated as fact; Class C must be marked as unproven.”</td></tr>
+            <tr><td class="id">citations emitted</td><td class="mono" style="font-size:11px;color:var(--accent)">EV-ATTACK-001 · EV-NVD-001</td></tr>
+            <tr><td class="id">verifier</td><td class="mono" style="font-size:11px;color:var(--green)">2/2 entailed · 0 unsourced · 0 gate violations</td></tr>
+          </tbody></table></div>
+        </div>
+        <div class="card">
+          <div class="card-h"><span class="lbl">Section 2 · What it means for the UAE</span><span class="mono" style="font-size:10px;color:var(--amber)">⬤ gate enforced</span></div>
+          <div class="tw"><table><tbody>
+            <tr><td class="id" style="width:150px">gate injected</td><td class="mono" style="font-size:11px;color:var(--amber)">VG-CY-01 OPEN</td></tr>
+            <tr><td class="id">blocked</td><td style="font-size:12px">Any UAE-specific capability-gap claim</td></tr>
+            <tr><td class="id">outcome</td><td style="font-size:12px">Claim withheld and marked “Customer validation required”.</td></tr>
+          </tbody></table></div>
+        </div>
+      </div>
+
+      <!-- ════ VERIFICATION ════ -->
+      <div class="view" id="v-ver">
+        <div class="vh"><h2>Verification</h2><span class="prev">PREVIEW · targets, not results</span></div>
+        <p class="vsub">Measured against the human-written Counter-UAS V1.0 report.</p>
+        <div class="card">
+          <div class="tw"><table>
+            <thead><tr><th>Metric</th><th>This system</th><th>Human V1.0</th></tr></thead>
+            <tbody>
+              <tr><td>Citation faithfulness</td><td class="mono num" style="color:var(--green)">0.97</td><td class="mono num">0.81</td></tr>
+              <tr><td>Unsourced assertions</td><td class="mono num" style="color:var(--green)">0</td><td class="mono num">31</td></tr>
+              <tr><td>Gate violations</td><td class="mono num" style="color:var(--green)">0</td><td class="mono num">—</td></tr>
+              <tr><td>Chain completeness</td><td class="mono num" style="color:var(--green)">94%</td><td class="mono num">n/a</td></tr>
+              <tr><td>Signal recall (SIG-01…19)</td><td class="mono num" style="color:var(--amber)">74%</td><td class="mono num" style="color:var(--ink)">100%</td></tr>
+              <tr><td>Regeneration time</td><td class="mono num" style="color:var(--green)">6 min</td><td class="mono num">~3 weeks</td></tr>
+            </tbody>
+          </table></div>
+          <p style="margin-top:12px;font-size:12.5px;color:var(--muted)">The humans still win on signal recall. Conceding that is what makes the other five rows credible.</p>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- ════ DRAWER ════ -->
+  <aside class="drw" id="drw" aria-label="Provenance">
+    <div class="drw-h"><span class="lbl">Provenance · <span id="d-id">EV-001</span></span><button id="d-x" aria-label="Close">×</button></div>
+    <div class="drw-b">
+      <div class="fld"><div class="lbl">Claim</div><div class="fv" id="d-claim"></div></div>
+      <div class="fld"><div class="lbl">Verbatim quote span</div><div class="quote" id="d-quote"></div></div>
+      <div class="fld"><div class="lbl">Source authority</div>
+        <div class="ladder" id="lad">
+          <div class="rung" data-t="4"><span class="b" style="background:var(--t4)"></span><span class="t">T4 · exploratory</span></div>
+          <div class="rung" data-t="3"><span class="b" style="background:var(--t3)"></span><span class="t">T3 · industry</span></div>
+          <div class="rung" data-t="2"><span class="b" style="background:var(--t2)"></span><span class="t">T2 · research</span></div>
+          <div class="rung" data-t="1"><span class="b" style="background:var(--t1)"></span><span class="t">T1 · official</span></div>
+        </div>
+        <div class="fv mono" style="font-size:11px" id="d-src"></div>
+      </div>
+      <div class="fld"><div class="lbl">Assigned by rule</div><div class="rule" id="d-rule"></div></div>
+      <div class="fld"><div class="lbl">Derivation chain</div>
+        <div class="chainv" id="chainv">
+          <div class="cn">CS-01 question</div><div class="cv"></div>
+          <div class="cn">document</div><div class="cv"></div>
+          <div class="cn" id="cn-ev">evidence</div><div class="cv"></div>
+          <div class="cn">entity set</div><div class="cv"></div>
+          <div class="cn">SIG-CY-01 signal</div>
+        </div>
+      </div>
+    </div>
+  </aside>
+
+</div>
+
+<script>
+(function(){
+  var rm=matchMedia("(prefers-reduced-motion: reduce)").matches, D=function(m){return rm?0:m};
+
+  /* nav */
+  var navs=[].slice.call(document.querySelectorAll(".nav"));
+  navs.forEach(function(b){b.addEventListener("click",function(){
+    navs.forEach(function(x){x.classList.remove("on")}); b.classList.add("on");
+    [].slice.call(document.querySelectorAll(".view")).forEach(function(v){v.classList.remove("on")});
+    var t=document.getElementById("v-"+b.dataset.v); if(t)t.classList.add("on");
+    document.querySelector(".main").scrollTop=0;
+  })});
+
+  /* pillar selector */
+  var ps=[].slice.call(document.querySelectorAll("#psel button"));
+  ps.forEach(function(b){b.addEventListener("click",function(){
+    ps.forEach(function(x){x.classList.remove("on")}); b.classList.add("on");
+  })});
+
+  /* drawer + provenance */
+  var DATA={
+    attack:{id:"EV-ATTACK-001",claim:"MITRE ATT&CK lists 176 active intrusion sets, of which 36 reference Middle East, Gulf or UAE targeting in their threat descriptions.",
+      quote:"MuddyWater; Strider; Gallmaker; Leafminer; CURIUM; APT39; APT37; Moses Staff; OilRig; POLONIUM; Ferocious Kitten; DarkHydrus",
+      tier:1,src:"MITRE ATT&CK Enterprise (STIX) · SRC-T1-009",rule:"class_check() → Tier 1 source ⇒ Class A / HIGH"},
+    nvd:{id:"EV-NVD-001",claim:"NVD returns 20 distinct CVE records across control-system and navigation keywords (command and control, UAV, GNSS, SCADA) relevant to connected defence architectures.",
+      quote:"CVE-2025-71318, CVE-2025-7639, CVE-2026-10057, CVE-2026-10058, CVE-2026-10796, CVE-2026-12620, CVE-2026-15461, CVE-2026-40546…",
+      tier:1,src:"NIST National Vulnerability Database · SRC-T1-008",rule:"class_check() → Tier 1 source ⇒ Class A / HIGH"}
+  };
+  var drw=document.getElementById("drw");
+  function open(k){
+    var d=DATA[k]; if(!d) return;
+    document.getElementById("d-id").textContent=d.id;
+    document.getElementById("d-claim").textContent=d.claim;
+    document.getElementById("d-quote").textContent="“"+d.quote+"”";
+    document.getElementById("d-src").textContent=d.src;
+    document.getElementById("d-rule").textContent=d.rule;
+    document.getElementById("cn-ev").textContent=d.id;
+    [].slice.call(document.querySelectorAll("#lad .rung")).forEach(function(r){
+      r.classList.toggle("on", Number(r.dataset.t)>=d.tier);
+    });
+    drw.classList.add("on");
+    var cns=[].slice.call(document.querySelectorAll("#chainv .cn"));
+    cns.forEach(function(c){c.classList.remove("lit")});
+    cns.forEach(function(c,i){setTimeout(function(){c.classList.add("lit")},D(140+i*120))});
+  }
+  document.addEventListener("click",function(e){
+    var t=e.target.closest("[data-ev]");
+    if(t){open(t.dataset.ev); return;}
+    if(e.target.id==="d-x") drw.classList.remove("on");
+  });
+
+  /* pipeline run */
+  var pipe=document.getElementById("pipe"), kids=[].slice.call(pipe.children), st=document.getElementById("pst"), busy=false;
+  document.getElementById("run").addEventListener("click",function(){
+    if(busy)return; busy=true; st.textContent="running";
+    kids.forEach(function(k){k.classList.remove("on","done")});
+    var i=0;
+    (function n(){
+      if(i>=kids.length){busy=false;st.textContent="complete · 23 documents";return}
+      var el=kids[i]; el.classList.add("on");
+      if(i>=2){var p=kids[i-2]; if(p.classList.contains("stg")){p.classList.remove("on");p.classList.add("done")}}
+      i++; setTimeout(n,D(el.classList.contains("stg")?250:160));
+    })();
+  });
+})();
+</script>

@@ -1,0 +1,408 @@
+<title>Cyber Threat Baseline UAE</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Spectral:ital,wght@0,300;0,400;0,600;1,400&family=Archivo:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap">
+
+<style>
+/* ────────────────────────────────────────────────────────────
+   A generated intelligence document with a critical apparatus.
+   The report is the interface; the ontology lives in the margin.
+   ──────────────────────────────────────────────────────────── */
+:root{
+  --paper:#FAFAF9; --leaf:#F2F3F2; --sunk:#EAEBEA; --rule:#DCDEDD; --rule-soft:#E8E9E8;
+  --ink:#16191C; --ink-2:#3C444B; --muted:#6E767D; --faint:#9AA1A6;
+  --t1:#0F6E78; --t2:#3A7A8C; --t3:#5E7683; --t4:#8A97A0;
+  --gate:#A8681A; --gate-bg:#F6EFE3; --bad:#A8403A; --good:#2E7350;
+  --serif:"Spectral",Georgia,serif;
+  --sans:"Archivo",system-ui,sans-serif;
+  --mono:"IBM Plex Mono",ui-monospace,Menlo,monospace;
+  --ez:cubic-bezier(.2,.9,.3,1);
+}
+@media (prefers-color-scheme:dark){
+  :root:not([data-theme="light"]){
+    --paper:#101619; --leaf:#161E22; --sunk:#0B1013; --rule:#263136; --rule-soft:#1C262A;
+    --ink:#E3E8E9; --ink-2:#B3BEC3; --muted:#849097; --faint:#5C686E;
+    --t1:#49BCC6; --t2:#5E9DAE; --t3:#6E8794; --t4:#7C8A93;
+    --gate:#D9A04A; --gate-bg:#241D0F; --bad:#D4726C; --good:#5DA97D;
+  }
+}
+:root[data-theme="dark"]{
+  --paper:#101619; --leaf:#161E22; --sunk:#0B1013; --rule:#263136; --rule-soft:#1C262A;
+  --ink:#E3E8E9; --ink-2:#B3BEC3; --muted:#849097; --faint:#5C686E;
+  --t1:#49BCC6; --t2:#5E9DAE; --t3:#6E8794; --t4:#7C8A93;
+  --gate:#D9A04A; --gate-bg:#241D0F; --bad:#D4726C; --good:#5DA97D;
+}
+
+*{box-sizing:border-box}
+body{margin:0;background:var(--paper);color:var(--ink);font-family:var(--serif);font-size:16px;line-height:1.68}
+h1,h2,h3{margin:0;font-weight:600;text-wrap:balance}
+p{margin:0}
+button{font-family:inherit;cursor:pointer}
+:focus-visible{outline:2px solid var(--t1);outline-offset:2px}
+.mono{font-family:var(--mono)}
+.tag{font-family:var(--mono);font-size:9.5px;letter-spacing:.14em;text-transform:uppercase;color:var(--muted)}
+
+/* ── document control strip ─────────────────────────────── */
+.ctl{position:sticky;top:0;z-index:20;background:var(--leaf);border-bottom:1px solid var(--rule);
+     display:flex;align-items:center;gap:18px;padding:9px 26px;flex-wrap:wrap}
+.ctl .cls{font-family:var(--mono);font-size:10px;letter-spacing:.16em;text-transform:uppercase;
+          color:var(--bad);border:1px solid var(--bad);border-radius:2px;padding:2px 7px}
+.ctl .meta{font-family:var(--mono);font-size:10.5px;color:var(--muted)}
+.ctl .sp{flex:1}
+.status{font-family:var(--mono);font-size:10px;letter-spacing:.1em;text-transform:uppercase;
+        color:var(--gate);background:var(--gate-bg);border:1px solid var(--gate);border-radius:2px;padding:3px 8px}
+.tog{background:none;border:1px solid var(--rule);border-radius:2px;color:var(--muted);
+     font-family:var(--mono);font-size:10px;padding:3px 8px}
+.tog:hover{color:var(--ink);border-color:var(--muted)}
+
+/* ── page frame ─────────────────────────────────────────── */
+.page{max-width:1140px;margin:0 auto;padding:0 26px 100px;
+      display:grid;grid-template-columns:150px minmax(0,1fr);gap:40px}
+@media(max-width:1000px){.page{grid-template-columns:1fr;gap:0}.outline{position:static!important;height:auto!important;padding-top:24px!important;border-right:0!important}}
+
+.outline{position:sticky;top:44px;height:calc(100vh - 44px);padding-top:44px;overflow-y:auto;
+         display:flex;flex-direction:column;gap:1px}
+.outline .tag{margin-bottom:8px}
+.outline a{display:block;font-family:var(--sans);font-size:12.5px;color:var(--muted);
+           text-decoration:none;padding:5px 0 5px 11px;border-left:2px solid var(--rule)}
+.outline a:hover{color:var(--ink);border-left-color:var(--t1)}
+.outline a.gated{color:var(--gate);border-left-color:var(--gate)}
+
+.doc{padding-top:44px;min-width:0}
+
+/* ── masthead ───────────────────────────────────────────── */
+.mast{border-bottom:2px solid var(--ink);padding-bottom:20px;margin-bottom:8px}
+.mast .org{font-family:var(--mono);font-size:10.5px;letter-spacing:.2em;text-transform:uppercase;color:var(--muted)}
+.mast h1{font-size:40px;line-height:1.1;letter-spacing:-.018em;margin:12px 0 10px;font-weight:600}
+.mast .dek{font-size:17px;line-height:1.55;color:var(--ink-2);font-weight:300;max-width:58ch}
+.mast .by{display:flex;flex-wrap:wrap;gap:16px;margin-top:16px;font-family:var(--mono);font-size:10.5px;color:var(--muted)}
+.mast .by b{color:var(--ink-2);font-weight:500}
+
+/* ── the apparatus grid: text left, evidence right ──────── */
+.blk{display:grid;grid-template-columns:minmax(0,62ch) 246px;gap:34px;align-items:start;
+     padding:9px 0;border-radius:3px;transition:background .18s var(--ez)}
+@media(max-width:1000px){.blk{grid-template-columns:1fr;gap:10px}}
+.blk.hot{background:var(--leaf)}
+.blk > .txt > p + p{margin-top:14px}
+
+h2.sec{font-family:var(--sans);font-size:12px;font-weight:600;letter-spacing:.15em;text-transform:uppercase;
+       color:var(--muted);margin:38px 0 4px;padding-top:16px;border-top:1px solid var(--rule)}
+h3.sub{font-size:22px;letter-spacing:-.012em;margin:4px 0 12px}
+
+/* margin apparatus */
+.app{font-family:var(--sans);font-size:11.5px;line-height:1.5;color:var(--muted);
+     border-left:1px solid var(--rule);padding-left:13px}
+.app .ent{padding:5px 0;cursor:pointer;border-radius:2px;transition:.15s var(--ez)}
+.app .ent:hover{color:var(--ink-2)}
+.app .eid{font-family:var(--mono);font-size:10.5px;color:var(--t1);display:block}
+.app .esrc{display:block;margin-top:1px}
+.app .bars{display:flex;gap:2px;margin-top:5px}
+.app .bars i{height:3px;width:15px;border-radius:1px;background:var(--rule);display:block}
+.app .bars i.f{background:var(--t1)}
+.app .cls{font-family:var(--mono);font-size:9.5px;letter-spacing:.08em}
+.app .none{font-style:italic;color:var(--faint)}
+
+/* inline citation */
+.c{font-family:var(--mono);font-size:11px;color:var(--t1);border-bottom:1px solid currentColor;
+   cursor:pointer;padding:0 1px;white-space:nowrap}
+.c:hover{background:var(--sunk)}
+
+/* redaction */
+.redact{position:relative;border:1px solid var(--gate);background:var(--gate-bg);border-radius:3px;padding:16px 18px;overflow:hidden}
+.redact .hidden{filter:blur(5px);opacity:.28;user-select:none;font-size:16px}
+.redact .stamp{position:absolute;inset:0;display:grid;place-items:center;pointer-events:none}
+.redact .stamp span{font-family:var(--mono);font-size:10.5px;font-weight:500;letter-spacing:.17em;text-transform:uppercase;
+  color:var(--gate);border:2px solid var(--gate);border-radius:2px;padding:7px 14px;background:var(--paper);transform:rotate(-2.4deg)}
+.gate-note{font-family:var(--sans);font-size:12.5px;color:var(--muted);margin-top:11px;line-height:1.55}
+.gate-note b{color:var(--gate);font-family:var(--mono);font-size:11px;font-weight:500}
+
+/* generation ledger */
+.ledger{border:1px solid var(--rule);border-radius:3px;background:var(--leaf);padding:0;overflow:hidden;margin-top:10px}
+.ledger summary{font-family:var(--mono);font-size:10.5px;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);
+                padding:9px 13px;cursor:pointer;list-style:none;display:flex;justify-content:space-between;gap:12px}
+.ledger summary::-webkit-details-marker{display:none}
+.ledger summary:hover{color:var(--ink)}
+.ledger[open] summary{border-bottom:1px solid var(--rule)}
+.ledger .lb{padding:11px 13px;font-family:var(--mono);font-size:11px;line-height:1.85;color:var(--ink-2)}
+.ledger .lb span{color:var(--muted);display:inline-block;width:132px}
+.ledger .lb em{color:var(--gate);font-style:normal}
+.ledger .lb i{color:var(--good);font-style:normal}
+
+/* evidence table */
+.tw{overflow-x:auto;margin-top:6px}
+table{width:100%;border-collapse:collapse;font-family:var(--sans);font-size:12.5px}
+th{text-align:left;font-family:var(--mono);font-size:9.5px;letter-spacing:.13em;text-transform:uppercase;
+   color:var(--muted);font-weight:500;padding:0 14px 7px 0;border-bottom:1px solid var(--rule);white-space:nowrap}
+td{padding:9px 14px 9px 0;border-bottom:1px solid var(--rule-soft);color:var(--ink-2);vertical-align:top}
+td.m{font-family:var(--mono);font-size:11px;color:var(--ink);white-space:nowrap}
+
+/* footnote refs */
+.refs{font-family:var(--mono);font-size:11.5px;line-height:2.1;color:var(--muted)}
+.refs b{color:var(--ink-2);font-weight:500}
+
+/* provenance popover */
+.pop{position:fixed;z-index:40;width:310px;background:var(--paper);border:1px solid var(--rule);
+     border-radius:3px;box-shadow:0 10px 34px rgba(0,0,0,.16);padding:14px;opacity:0;visibility:hidden;
+     transform:translateY(5px);transition:opacity .16s var(--ez),transform .16s var(--ez),visibility .16s}
+.pop.on{opacity:1;visibility:visible;transform:none}
+.pop .ph{font-family:var(--mono);font-size:10.5px;color:var(--t1);margin-bottom:8px}
+.pop .pq{font-family:var(--mono);font-size:10.5px;line-height:1.7;color:var(--ink-2);
+         background:var(--sunk);border-left:2px solid var(--t1);padding:8px 10px;word-break:break-word;margin-bottom:10px}
+.pop .pl{display:flex;flex-direction:column-reverse;gap:2px;margin-bottom:9px}
+.pop .pr{display:flex;align-items:center;gap:8px;padding:3px 6px;border-radius:2px}
+.pop .pr i{width:26px;height:3px;border-radius:1px;opacity:.26;display:block}
+.pop .pr span{font-family:var(--mono);font-size:9.5px;color:var(--faint)}
+.pop .pr.on{background:var(--sunk)}
+.pop .pr.on i{opacity:1}
+.pop .pr.on span{color:var(--ink)}
+.pop .prule{font-family:var(--mono);font-size:10px;color:var(--t1);border-top:1px dashed var(--rule);padding-top:9px}
+
+footer{max-width:1140px;margin:0 auto;padding:26px;border-top:1px solid var(--rule);
+       font-family:var(--mono);font-size:10.5px;color:var(--faint);line-height:1.8}
+@media(prefers-reduced-motion:reduce){*{transition-duration:.01ms!important}}
+</style>
+
+<div class="ctl">
+  <span class="cls">Restricted</span>
+  <span class="meta">TAWAZUN COUNCIL · FETC</span>
+  <span class="meta">v0.1 · 25 Sep 2026</span>
+  <span class="meta">generated in 00:06:14 from 22 documents</span>
+  <span class="sp"></span>
+  <span class="status">● Gates open · 1 claim withheld</span>
+  <button class="tog" id="tog">Theme</button>
+</div>
+
+<div class="page">
+
+  <nav class="outline">
+    <div class="tag">Contents</div>
+    <a href="#s1">1 · What is changing</a>
+    <a href="#s2" class="gated">2 · Meaning for the UAE</a>
+    <a href="#s3">3 · Evidence register</a>
+    <a href="#s4">4 · Method &amp; limits</a>
+    <a href="#s5">5 · References</a>
+  </nav>
+
+  <article class="doc">
+
+    <header class="mast">
+      <div class="org">Strategic Foresight · Cybersecurity Pillar</div>
+      <h1>Cyber Threat Baseline — United Arab Emirates</h1>
+      <p class="dek">A current-state assessment of regionally-active intrusion sets and control-system vulnerability exposure, assembled from the tiered source registry.</p>
+      <div class="by">
+        <span><b>22</b> documents</span>
+        <span><b>56</b> typed entities</span>
+        <span><b>2</b> evidence rows</span>
+        <span><b>0</b> unsourced claims</span>
+        <span><b>1</b> claim withheld</span>
+      </div>
+    </header>
+
+    <h2 class="sec" id="s1">Section 1</h2>
+    <div class="blk"><div class="txt"><h3 class="sub">What is changing</h3></div><div class="app"></div></div>
+
+    <div class="blk" data-ev="attack">
+      <div class="txt">
+        <p>The regionally-active threat landscape is concentrated rather than diffuse. Of 176 active intrusion sets catalogued in MITRE ATT&amp;CK, 36 reference Middle East, Gulf or UAE targeting in their threat descriptions <span class="c" data-ev="attack">[EV-ATTACK-001]</span>. That is roughly one in five of all catalogued sets, against a region holding a far smaller share of global network estate.</p>
+        <p>One of those 36 names the United Arab Emirates explicitly. <em>Stealth Falcon</em> (G0038) is described as operating against Emirati targets; a further set, <em>MuddyWater</em> (G0069), carries both Middle East and UAE targeting references. The remainder cluster around Iran, Israel and broader Gulf activity.</p>
+      </div>
+      <div class="app">
+        <div class="ent" data-ev="attack">
+          <span class="eid">EV-ATTACK-001</span>
+          <span class="esrc">MITRE ATT&amp;CK Enterprise · STIX bundle</span>
+          <span class="bars"><i class="f"></i><i></i><i></i><i></i></span>
+          <span class="cls" style="color:var(--t1)">TIER 1 · CLASS A · HIGH</span>
+        </div>
+        <div class="ent">
+          <span class="eid" style="color:var(--muted)">36 entities</span>
+          <span class="esrc">threat_actor · loaded without LLM</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="blk" data-ev="nvd">
+      <div class="txt">
+        <p>Connected defence architectures inherit the vulnerability surface of their control and navigation components. A keyword sweep of the National Vulnerability Database across command-and-control, UAV, GNSS and SCADA terms returns 20 distinct CVE records published in the last 120 days <span class="c" data-ev="nvd">[EV-NVD-001]</span>. The most severe carries a CVSS base score of 9.8; three exceed 7.0.</p>
+        <p>This is a measure of published exposure, not of UAE exposure. Whether any of these components appear in Emirati defence systems is not determinable from public sources and is not asserted here.</p>
+      </div>
+      <div class="app">
+        <div class="ent" data-ev="nvd">
+          <span class="eid">EV-NVD-001</span>
+          <span class="esrc">NIST National Vulnerability Database</span>
+          <span class="bars"><i class="f"></i><i></i><i></i><i></i></span>
+          <span class="cls" style="color:var(--t1)">TIER 1 · CLASS A · HIGH</span>
+        </div>
+        <div class="ent">
+          <span class="eid" style="color:var(--muted)">20 entities</span>
+          <span class="esrc">cyber_threat · CVSS 4.8 – 9.8</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="blk">
+      <div class="txt">
+        <details class="ledger">
+          <summary><span>Generation ledger · Section 1</span><span>2 rows in · 2 cited</span></summary>
+          <div class="lb">
+            <span>inputs declared</span>evidence, signals<br>
+            <span>rows passed</span>2 evidence · 0 signals<br>
+            <span>rows withheld</span><em>0 — fetch_inputs does not yet honour section links</em><br>
+            <span>instruction</span>Only Class A/B may be stated as fact<br>
+            <span>citations emitted</span>EV-ATTACK-001 · EV-NVD-001<br>
+            <span>verifier</span><i>2/2 entailed · 0 unsourced · 0 gate violations</i>
+          </div>
+        </details>
+      </div>
+      <div class="app"><div class="ent none">Ledger records what the model was given and what it was denied.</div></div>
+    </div>
+
+    <h2 class="sec" id="s2">Section 2</h2>
+    <div class="blk"><div class="txt"><h3 class="sub">What it means for the UAE</h3></div><div class="app"></div></div>
+
+    <div class="blk">
+      <div class="txt">
+        <div class="redact">
+          <p class="hidden">The UAE lacks adequate detection coverage against the regionally-active intrusion sets identified above, and its connected defence architecture carries material unpatched exposure in control-system components, creating a readiness gap that should be addressed in the next procurement cycle.</p>
+          <div class="stamp"><span>Customer validation required</span></div>
+        </div>
+        <p class="gate-note"><b>VG-CY-01 OPEN</b> — raised by <span class="mono">uae_inference_guard</span>. The register holds no UAE-layer Class A or B evidence, so evidence at the GLOBAL layer cannot transfer to a UAE conclusion. The paragraph above was drafted and then withheld. It is not an omission; it is a refusal, and it will lift automatically when UAE-layer evidence of sufficient class enters the register.</p>
+      </div>
+      <div class="app">
+        <div class="ent">
+          <span class="eid" style="color:var(--gate)">VG-CY-01</span>
+          <span class="esrc">Customer validation · OPEN</span>
+          <span class="bars"><i></i><i></i><i></i><i></i></span>
+          <span class="cls" style="color:var(--gate)">BLOCKS UAE GAP CLAIMS</span>
+        </div>
+        <div class="ent none">No UAE-layer evidence available at Class A or B.</div>
+      </div>
+    </div>
+
+    <div class="blk">
+      <div class="txt">
+        <p>What can be said without the gate is narrower and holds regardless. Regional intrusion-set density is high and at least one catalogued set names the UAE as a target <span class="c" data-ev="attack">[EV-ATTACK-001]</span>. Published vulnerability volume in control-system and navigation components is non-trivial and recent <span class="c" data-ev="nvd">[EV-NVD-001]</span>. Both observations justify acquiring the UAE-layer evidence the gate is waiting on — they do not substitute for it.</p>
+      </div>
+      <div class="app">
+        <div class="ent" data-ev="attack"><span class="eid">EV-ATTACK-001</span><span class="esrc">restated within class</span></div>
+        <div class="ent" data-ev="nvd"><span class="eid">EV-NVD-001</span><span class="esrc">restated within class</span></div>
+      </div>
+    </div>
+
+    <h2 class="sec" id="s3">Section 3</h2>
+    <div class="blk"><div class="txt"><h3 class="sub">Evidence register</h3></div><div class="app"></div></div>
+
+    <div class="blk">
+      <div class="txt">
+        <div class="tw"><table>
+          <thead><tr><th>ID</th><th>Claim</th><th>Class</th><th>Layer</th><th>Tier</th></tr></thead>
+          <tbody>
+            <tr><td class="m">EV-ATTACK-001</td><td>176 active intrusion sets, 36 referencing Middle East, Gulf or UAE targeting.</td><td class="m" style="color:var(--t1)">A / HIGH</td><td class="m">GLOBAL</td><td class="m">T1</td></tr>
+            <tr><td class="m">EV-NVD-001</td><td>20 distinct CVE records across control-system and navigation keywords, last 120 days.</td><td class="m" style="color:var(--t1)">A / HIGH</td><td class="m">GLOBAL</td><td class="m">T1</td></tr>
+          </tbody>
+        </table></div>
+        <p style="font-family:var(--sans);font-size:12.5px;color:var(--muted);margin-top:12px">Class and confidence are assigned by <span class="mono">rules.py</span> from source tier and corroboration count. The model that drafted this document could not set either value.</p>
+      </div>
+      <div class="app"><div class="ent none">Two rows. This document is deliberately small — it reports only what the register currently supports.</div></div>
+    </div>
+
+    <h2 class="sec" id="s4">Section 4</h2>
+    <div class="blk"><div class="txt"><h3 class="sub">Method and limits</h3></div><div class="app"></div></div>
+
+    <div class="blk">
+      <div class="txt">
+        <p>Collection ran across three lanes over a registry of 27 tiered sources: scheduled feeds and scrapes, question-driven search, and structured APIs loaded directly as typed entities without passing through a language model. Twenty-two documents were retained — nine Tier 1, nine Tier 3, four Tier 4.</p>
+        <p>Two Tier-1 sources could not be collected directly and are reached through site-scoped search instead: NATO NCIA returns 403 site-wide, and the UAE Cyber Security Council fails TLS negotiation. Janes and Shephard Media remain paywalled and are excluded pending a subscription decision. These absences are recorded rather than silently tolerated.</p>
+        <p>The synthesis stage has not yet run, so this document contains no signals, findings or risks — only evidence. That is why it is a baseline rather than an assessment.</p>
+      </div>
+      <div class="app">
+        <div class="ent"><span class="eid" style="color:var(--muted)">27 sources</span><span class="esrc">11 T1 · 4 T2 · 3 T3 · 9 T4</span><span class="bars"><i class="f"></i><i class="f"></i><i class="f"></i><i class="f"></i></span></div>
+        <div class="ent none">3 sources unreachable or paywalled — declared in text.</div>
+      </div>
+    </div>
+
+    <h2 class="sec" id="s5">Section 5</h2>
+    <div class="blk">
+      <div class="txt">
+        <h3 class="sub">References</h3>
+        <p class="refs">
+          <b>[EV-ATTACK-001]</b> MITRE ATT&amp;CK Enterprise Matrix, STIX bundle. Tier 1. Retrieved 25 Sep 2026.<br>
+          <b>[EV-NVD-001]</b> NIST National Vulnerability Database, CVE API 2.0. Tier 1. Retrieved 25 Sep 2026.
+        </p>
+        <p style="font-family:var(--sans);font-size:12.5px;color:var(--muted);margin-top:14px">References are assembled mechanically from <span class="mono">evidence_sources</span>. No reference in this document was written by a language model.</p>
+      </div>
+      <div class="app"></div>
+    </div>
+
+  </article>
+</div>
+
+<div class="pop" id="pop">
+  <div class="ph" id="p-id"></div>
+  <div class="pq" id="p-q"></div>
+  <div class="pl" id="p-l">
+    <div class="pr" data-t="4"><i style="background:var(--t4)"></i><span>T4 exploratory</span></div>
+    <div class="pr" data-t="3"><i style="background:var(--t3)"></i><span>T3 industry</span></div>
+    <div class="pr" data-t="2"><i style="background:var(--t2)"></i><span>T2 research</span></div>
+    <div class="pr" data-t="1"><i style="background:var(--t1)"></i><span>T1 official</span></div>
+  </div>
+  <div class="prule" id="p-r"></div>
+</div>
+
+<footer>
+  Generated by the neurosymbolic foresight pipeline · collect → extract → rules → synthesize → generate → verify<br>
+  Every claim above is a row in Postgres. Hover any paragraph to see the evidence carrying it; click a citation for the verbatim source span.
+</footer>
+
+<script>
+(function(){
+  var D={
+    attack:{id:"EV-ATTACK-001 · Class A · HIGH",
+      q:"MuddyWater; Strider; Gallmaker; Leafminer; CURIUM; APT39; APT37; Moses Staff; OilRig; POLONIUM; Ferocious Kitten; DarkHydrus",
+      t:1,r:"class_check() — Tier 1 source ⇒ Class A / HIGH"},
+    nvd:{id:"EV-NVD-001 · Class A · HIGH",
+      q:"CVE-2025-71318, CVE-2025-7639, CVE-2026-10057, CVE-2026-10058, CVE-2026-10796, CVE-2026-12620, CVE-2026-15461, CVE-2026-40546…",
+      t:1,r:"class_check() — Tier 1 source ⇒ Class A / HIGH"}
+  };
+  var pop=document.getElementById("pop");
+
+  /* paragraph ↔ apparatus coupling */
+  [].slice.call(document.querySelectorAll(".blk[data-ev]")).forEach(function(b){
+    b.addEventListener("mouseenter",function(){b.classList.add("hot")});
+    b.addEventListener("mouseleave",function(){b.classList.remove("hot")});
+  });
+
+  function show(k,x,y){
+    var d=D[k]; if(!d)return;
+    document.getElementById("p-id").textContent=d.id;
+    document.getElementById("p-q").textContent="“"+d.q+"”";
+    document.getElementById("p-r").textContent=d.r;
+    [].slice.call(pop.querySelectorAll(".pr")).forEach(function(r){
+      r.classList.toggle("on",Number(r.dataset.t)>=d.t);
+    });
+    pop.classList.add("on");
+    var w=310,h=pop.offsetHeight||240;
+    var left=Math.min(Math.max(12,x-w/2),innerWidth-w-12);
+    var top=y+16; if(top+h>innerHeight-12) top=Math.max(12,y-h-14);
+    pop.style.left=left+"px"; pop.style.top=top+"px";
+  }
+  document.addEventListener("click",function(e){
+    var t=e.target.closest("[data-ev]");
+    if(t&&(t.classList.contains("c")||t.classList.contains("ent"))){
+      var r=t.getBoundingClientRect();
+      show(t.dataset.ev,r.left+r.width/2,r.bottom);
+      e.stopPropagation(); return;
+    }
+    if(!e.target.closest(".pop")) pop.classList.remove("on");
+  });
+  addEventListener("keydown",function(e){if(e.key==="Escape")pop.classList.remove("on")});
+  addEventListener("scroll",function(){pop.classList.remove("on")},{passive:true});
+
+  /* theme */
+  var root=document.documentElement;
+  document.getElementById("tog").addEventListener("click",function(){
+    var dark=matchMedia("(prefers-color-scheme:dark)").matches;
+    var cur=root.getAttribute("data-theme")||(dark?"dark":"light");
+    root.setAttribute("data-theme",cur==="dark"?"light":"dark");
+  });
+})();
+</script>

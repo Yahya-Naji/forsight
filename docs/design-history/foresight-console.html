@@ -1,0 +1,640 @@
+<title>Foresight Console</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap">
+
+<style>
+/* ───────────────────────────────────────────────────────────────
+   Foresight Console — design system
+   Single visual world: an operational dark console. Deliberate, not
+   an omission — every colour is painted explicitly so the page holds
+   on any host ground.
+   ─────────────────────────────────────────────────────────────── */
+:root{
+  --ground:#0C1216;   --panel:#121B21;   --raised:#19242C;  --sunken:#090E11;
+  --line:#24313A;     --line-soft:#1A242B;
+  --ink:#DAE5EB;      --ink-dim:#A3B5C2;  --muted:#74899A;   --faint:#4C5F6D;
+
+  --accent:#3FB8C4;   --accent-dim:#2A8A94;
+  --amber:#DFA13C;    --red:#D65F58;      --green:#55A97A;
+
+  /* ordinal ramp — source tier, and therefore evidence authority */
+  --t1:#3FB8C4; --t2:#4E92A8; --t3:#55738A; --t4:#4A5D6B;
+
+  --sp1:4px; --sp2:8px; --sp3:12px; --sp4:16px; --sp5:24px; --sp6:36px; --sp7:56px;
+  --r:3px; --r-lg:5px;
+  --mono:"IBM Plex Mono",ui-monospace,Menlo,Consolas,monospace;
+  --sans:"Archivo",system-ui,-apple-system,"Segoe UI",sans-serif;
+  --ease:cubic-bezier(.2,.9,.3,1);
+}
+
+*{box-sizing:border-box}
+body{
+  margin:0; background:var(--ground); color:var(--ink);
+  font-family:var(--sans); font-size:15px; line-height:1.55;
+  -webkit-font-smoothing:antialiased;
+}
+h1,h2,h3{text-wrap:balance; margin:0; font-weight:600; letter-spacing:-.015em}
+p{margin:0}
+a{color:var(--accent); text-decoration:none; border-bottom:1px solid var(--accent-dim)}
+a:focus-visible,button:focus-visible{outline:2px solid var(--accent); outline-offset:2px}
+
+.mono{font-family:var(--mono)}
+.label{
+  font-family:var(--mono); font-size:10.5px; font-weight:500;
+  letter-spacing:.14em; text-transform:uppercase; color:var(--muted);
+}
+.num{font-variant-numeric:tabular-nums}
+
+/* ── shell ─────────────────────────────────────────────────── */
+.shell{display:grid; grid-template-columns:212px minmax(0,1fr); gap:var(--sp7); max-width:1180px; margin:0 auto; padding:0 var(--sp5)}
+@media(max-width:900px){.shell{grid-template-columns:1fr; gap:var(--sp5)}.rail{position:static!important;height:auto!important;padding-top:0!important}}
+
+.rail{position:sticky; top:0; height:100vh; padding-top:var(--sp7); display:flex; flex-direction:column; gap:var(--sp2)}
+.rail a{display:block; padding:5px 0 5px 12px; border:0; border-left:2px solid var(--line); color:var(--muted); font-size:13px}
+.rail a:hover{color:var(--ink); border-left-color:var(--accent)}
+.rail .rail-h{margin-bottom:var(--sp2)}
+
+main{padding:var(--sp7) 0 var(--sp7)}
+section{padding:var(--sp6) 0; border-top:1px solid var(--line-soft)}
+section:first-of-type{border-top:0; padding-top:0}
+.sec-h{display:flex; align-items:baseline; gap:var(--sp3); margin-bottom:var(--sp2)}
+.sec-h h2{font-size:21px}
+.lede{color:var(--ink-dim); max-width:66ch; margin-top:var(--sp2)}
+
+/* ── masthead ──────────────────────────────────────────────── */
+.mast{padding:var(--sp7) 0 var(--sp5)}
+.mast h1{font-size:40px; font-weight:700; line-height:1.05; margin:var(--sp3) 0}
+.mast .sub{color:var(--ink-dim); max-width:60ch}
+.brandmark{display:flex; align-items:center; gap:10px}
+.brandmark i{width:3px; height:19px; background:var(--accent); display:block}
+.brandmark span{font-family:var(--mono); font-size:12px; letter-spacing:.2em; color:var(--ink)}
+
+.decisions{display:flex; flex-wrap:wrap; gap:var(--sp2); margin-top:var(--sp5)}
+.chip{
+  font-family:var(--mono); font-size:11px; padding:5px 9px; border-radius:var(--r);
+  border:1px solid var(--line); background:var(--panel); color:var(--ink-dim);
+}
+.chip b{color:var(--accent); font-weight:500}
+
+/* ── panels ────────────────────────────────────────────────── */
+.panel{background:var(--panel); border:1px solid var(--line); border-radius:var(--r-lg); padding:var(--sp4)}
+.panel-h{display:flex; justify-content:space-between; align-items:center; gap:var(--sp3); margin-bottom:var(--sp3); padding-bottom:var(--sp2); border-bottom:1px solid var(--line-soft)}
+.grid2{display:grid; grid-template-columns:repeat(auto-fit,minmax(310px,1fr)); gap:var(--sp3)}
+.stack{display:flex; flex-direction:column; gap:var(--sp3)}
+.why{font-size:13px; color:var(--muted); margin-top:var(--sp3); padding-top:var(--sp3); border-top:1px dashed var(--line)}
+.why b{color:var(--ink-dim); font-weight:500}
+
+button.act{
+  font-family:var(--mono); font-size:11px; letter-spacing:.08em; text-transform:uppercase;
+  background:var(--raised); color:var(--ink); border:1px solid var(--line);
+  border-radius:var(--r); padding:6px 11px; cursor:pointer; transition:border-color .15s,color .15s;
+}
+button.act:hover{border-color:var(--accent); color:var(--accent)}
+
+/* ── 1. chain traversal ────────────────────────────────────── */
+.chain{display:flex; align-items:center; gap:0; margin:var(--sp4) 0 var(--sp2); overflow-x:auto; padding-bottom:var(--sp2)}
+.node{
+  flex:0 0 auto; font-family:var(--mono); font-size:10.5px; padding:7px 9px; border-radius:var(--r);
+  border:1px solid var(--line); background:var(--sunken); color:var(--faint);
+  transition:color .22s var(--ease), border-color .22s var(--ease), background .22s var(--ease), transform .22s var(--ease);
+}
+.node.lit{color:var(--ground); background:var(--accent); border-color:var(--accent); transform:translateY(-2px)}
+.conn{flex:0 0 26px; height:1px; background:var(--line); position:relative}
+.conn::after{content:""; position:absolute; inset:0; background:var(--accent); transform:scaleX(0); transform-origin:left; transition:transform .2s linear}
+.conn.lit::after{transform:scaleX(1)}
+.claim-line{font-size:14px; color:var(--ink-dim); line-height:1.7}
+.cite{
+  font-family:var(--mono); font-size:11px; color:var(--accent); background:rgba(63,184,196,.1);
+  border:1px solid rgba(63,184,196,.28); border-radius:var(--r); padding:1px 5px; cursor:pointer;
+}
+.cite:hover{background:rgba(63,184,196,.2)}
+
+/* ── 2. gate stamp ─────────────────────────────────────────── */
+.gate-wrap{position:relative; margin:var(--sp3) 0; padding:var(--sp4); background:var(--sunken); border:1px solid var(--line); border-radius:var(--r); overflow:hidden}
+.gate-text{font-size:14px; color:var(--ink-dim); transition:filter .28s var(--ease), opacity .28s var(--ease)}
+.gate-wrap.blocked .gate-text{filter:blur(4px); opacity:.34}
+.stamp{
+  position:absolute; inset:0; display:grid; place-items:center;
+  opacity:0; transform:scale(1.7) rotate(-9deg); pointer-events:none;
+  transition:opacity .16s var(--ease), transform .3s cubic-bezier(.16,1.4,.4,1);
+}
+.gate-wrap.blocked .stamp{opacity:1; transform:scale(1) rotate(-4deg)}
+.stamp span{
+  font-family:var(--mono); font-size:12px; font-weight:600; letter-spacing:.16em; text-transform:uppercase;
+  color:var(--amber); border:2px solid var(--amber); border-radius:var(--r); padding:7px 13px;
+  background:rgba(12,18,22,.82);
+}
+.gate-id{font-family:var(--mono); font-size:10.5px; color:var(--amber); margin-top:var(--sp2)}
+
+/* ── 3. corroboration merge ────────────────────────────────── */
+.merge{display:flex; align-items:stretch; gap:var(--sp3); margin:var(--sp4) 0; min-height:94px}
+.ev{
+  flex:1; background:var(--sunken); border:1px solid var(--line); border-radius:var(--r); padding:var(--sp3);
+  transition:transform .42s var(--ease), opacity .34s var(--ease), border-color .34s var(--ease);
+}
+.ev .ev-id{font-family:var(--mono); font-size:11px; color:var(--ink)}
+.ev .ev-src{font-family:var(--mono); font-size:10px; color:var(--muted); margin-top:3px}
+.ev .ev-cl{font-family:var(--mono); font-size:10px; margin-top:var(--sp2)}
+.merge.merged .ev-a{transform:translateX(calc(50% + 6px)); border-color:var(--accent)}
+.merge.merged .ev-b{transform:translateX(calc(-50% - 6px)) scale(.9); opacity:0}
+
+/* ── 4. tier ladder ────────────────────────────────────────── */
+.ladder{display:flex; flex-direction:column-reverse; gap:3px; margin-top:var(--sp3)}
+.rung{display:flex; align-items:center; gap:var(--sp3); padding:5px 8px; border-radius:var(--r); background:var(--sunken); border:1px solid transparent; transition:border-color .2s var(--ease), background .2s var(--ease)}
+.rung .bar{width:44px; height:5px; border-radius:1px; opacity:.4; transition:opacity .2s var(--ease)}
+.rung .nm{font-family:var(--mono); font-size:10.5px; color:var(--faint); transition:color .2s var(--ease)}
+.rung.on{border-color:var(--line); background:var(--raised)}
+.rung.on .bar{opacity:1}
+.rung.on .nm{color:var(--ink)}
+.tierpick{display:flex; gap:var(--sp2); flex-wrap:wrap}
+
+/* ── 5. signal meter ───────────────────────────────────────── */
+.meter{display:flex; gap:3px; margin:var(--sp3) 0 var(--sp2)}
+.seg{flex:1; height:13px; border-radius:1px; background:var(--sunken); border:1px solid var(--line); transform:scaleY(.62); transform-origin:bottom; transition:transform .34s cubic-bezier(.16,1.3,.4,1), background .28s var(--ease), border-color .28s var(--ease)}
+.seg.on{transform:scaleY(1); background:var(--accent); border-color:var(--accent)}
+.meter-read{display:flex; justify-content:space-between; align-items:baseline; font-family:var(--mono); font-size:11px}
+.meter-read .st{color:var(--accent); font-weight:500}
+.meter-read .dr{color:var(--muted)}
+
+/* ── 6. pipeline rail ──────────────────────────────────────── */
+.rail-run{display:flex; align-items:center; margin:var(--sp4) 0 var(--sp2); overflow-x:auto; padding-bottom:var(--sp2)}
+.stg{flex:0 0 auto; text-align:center}
+.stg .dot{width:9px; height:9px; border-radius:50%; background:var(--line); margin:0 auto 7px; transition:background .22s var(--ease), box-shadow .22s var(--ease)}
+.stg .nm{font-family:var(--mono); font-size:9.5px; color:var(--faint); transition:color .22s var(--ease)}
+.stg.on .dot{background:var(--accent); box-shadow:0 0 0 4px rgba(63,184,196,.16)}
+.stg.on .nm{color:var(--ink)}
+.stg.done .dot{background:var(--accent-dim)}
+.stg.done .nm{color:var(--muted)}
+.seg-line{flex:1 1 22px; min-width:16px; height:1px; background:var(--line); margin:0 5px 17px; position:relative}
+.seg-line::after{content:""; position:absolute; inset:0; background:var(--accent-dim); transform:scaleX(0); transform-origin:left; transition:transform .3s linear}
+.seg-line.on::after{transform:scaleX(1)}
+
+/* ── tokens display ────────────────────────────────────────── */
+.swatches{display:grid; grid-template-columns:repeat(auto-fit,minmax(132px,1fr)); gap:var(--sp2)}
+.sw{border:1px solid var(--line); border-radius:var(--r); overflow:hidden; background:var(--panel)}
+.sw .fill{height:46px}
+.sw .meta{padding:7px 9px; font-family:var(--mono); font-size:10px; line-height:1.5}
+.sw .meta b{display:block; color:var(--ink); font-weight:500}
+.sw .meta span{color:var(--muted)}
+
+.typerow{display:flex; align-items:baseline; gap:var(--sp4); padding:var(--sp3) 0; border-bottom:1px solid var(--line-soft); flex-wrap:wrap}
+.typerow:last-child{border-bottom:0}
+.typerow .spec{font-family:var(--mono); font-size:10px; color:var(--muted); flex:0 0 132px}
+
+/* ── wireframes ────────────────────────────────────────────── */
+.wire{
+  font-family:var(--mono); font-size:11px; line-height:1.52; color:var(--ink-dim);
+  background:var(--sunken); border:1px solid var(--line); border-radius:var(--r);
+  padding:var(--sp3); overflow-x:auto; white-space:pre; margin:var(--sp3) 0 0;
+}
+.route{font-family:var(--mono); font-size:12px; color:var(--accent)}
+.proves{font-size:13px; color:var(--muted); margin-top:var(--sp3)}
+.proves b{color:var(--ink-dim); font-weight:500}
+
+/* ── tables ────────────────────────────────────────────────── */
+.tbl-wrap{overflow-x:auto}
+table{width:100%; border-collapse:collapse; font-size:13px}
+th{
+  text-align:left; font-family:var(--mono); font-size:10px; letter-spacing:.12em; text-transform:uppercase;
+  color:var(--muted); font-weight:500; padding:0 var(--sp3) var(--sp2) 0; border-bottom:1px solid var(--line);
+}
+td{padding:9px var(--sp3) 9px 0; border-bottom:1px solid var(--line-soft); vertical-align:top; color:var(--ink-dim)}
+td:first-child{color:var(--ink); font-family:var(--mono); font-size:12px; white-space:nowrap}
+tr:last-child td{border-bottom:0}
+
+.seq{counter-reset:s; display:flex; flex-direction:column; gap:var(--sp3)}
+.step{display:grid; grid-template-columns:30px 1fr; gap:var(--sp3); align-items:start}
+.step .n{font-family:var(--mono); font-size:11px; color:var(--accent); padding-top:2px}
+.step h3{font-size:14px; font-weight:600}
+.step p{font-size:13.5px; color:var(--muted); margin-top:3px}
+
+footer{padding:var(--sp6) 0 var(--sp7); border-top:1px solid var(--line-soft); color:var(--faint); font-size:12.5px}
+
+@media(prefers-reduced-motion:reduce){
+  *{transition-duration:.01ms!important; animation-duration:.01ms!important}
+}
+</style>
+
+<div class="shell">
+
+<nav class="rail" aria-label="Sections">
+  <div class="label rail-h">Contents</div>
+  <a href="#motion">Motion vocabulary</a>
+  <a href="#tokens">Tokens</a>
+  <a href="#type">Typography</a>
+  <a href="#screens">Screens</a>
+  <a href="#components">Components</a>
+  <a href="#build">Build order</a>
+</nav>
+
+<main>
+
+  <header class="mast">
+    <div class="brandmark"><i></i><span>FORESIGHT</span></div>
+    <h1>An instrument, not a dashboard.</h1>
+    <p class="sub">Design system for the Tawazun neurosymbolic foresight console. Every motion pattern here argues the architecture: that each claim is typed, sourced, rule-scored, and refusable.</p>
+    <div class="decisions">
+      <span class="chip"><b>Direction</b> · operational dark</span>
+      <span class="chip"><b>Stack</b> · Next.js + Tailwind v4 + Motion</span>
+      <span class="chip"><b>Density</b> · 12–15px, 4px grid</span>
+      <span class="chip"><b>Screens</b> · 6 routes</span>
+    </div>
+  </header>
+
+  <!-- ══ MOTION ══════════════════════════════════════════════ -->
+  <section id="motion">
+    <div class="sec-h"><span class="label">01</span><h2>Motion vocabulary</h2></div>
+    <p class="lede">Six patterns. Each one makes a rule of the system visible — none of them decorate. If an animation can be removed without losing an argument, it should be. All demos below are live; click them.</p>
+
+    <div class="stack" style="margin-top:var(--sp5)">
+
+      <!-- 1 -->
+      <div class="panel">
+        <div class="panel-h"><span class="label">Pattern 01 · Chain traversal</span><button class="act" id="b-chain">Trace claim</button></div>
+        <p class="claim-line">Link-independent UAS reduce the coverage of RF-based defeat layers <span class="cite" id="c-chain">EV-001</span></p>
+        <div class="chain" id="chain">
+          <span class="node">EW-02 question</span><span class="conn"></span>
+          <span class="node">EV-001 evidence</span><span class="conn"></span>
+          <span class="node">SIG-EW-04 signal</span><span class="conn"></span>
+          <span class="node">F-EW-01 finding</span><span class="conn"></span>
+          <span class="node">R-EW-04 risk</span>
+        </div>
+        <p class="why"><b>Why it earns its place.</b> A fade-in would say “here is related data.” A staggered walk says “this conclusion was derived, in this order, from that question.” The stagger <i>is</i> the traceability claim.</p>
+      </div>
+
+      <!-- 2 -->
+      <div class="panel">
+        <div class="panel-h"><span class="label">Pattern 02 · Gate stamp</span><button class="act" id="b-gate">Assert UAE gap</button></div>
+        <div class="gate-wrap" id="gate">
+          <p class="gate-text">The UAE lacks adequate counter-UAS coverage across critical national infrastructure.</p>
+          <div class="stamp"><span>Customer validation required</span></div>
+        </div>
+        <p class="gate-id">VG-EW-01 OPEN · raised by uae_inference_guard · blocks any UAE-specific capability-gap claim</p>
+        <p class="why"><b>Why it earns its place.</b> The refusal is the product. A quiet toast would bury it; the stamp lands like a classification mark and makes the system’s restraint the most visible thing on screen.</p>
+      </div>
+
+      <!-- 3 -->
+      <div class="panel">
+        <div class="panel-h"><span class="label">Pattern 03 · Corroboration merge</span><button class="act" id="b-merge">Corroborate</button></div>
+        <div class="merge" id="merge">
+          <div class="ev ev-a">
+            <div class="ev-id">EV-001</div>
+            <div class="ev-src">UK MOD · Tier 1</div>
+            <div class="ev-cl" id="cl-a" style="color:var(--t2)">Class C · 1 source</div>
+          </div>
+          <div class="ev ev-b">
+            <div class="ev-id">EV-014</div>
+            <div class="ev-src">Reuters · Tier 4</div>
+            <div class="ev-cl" style="color:var(--t4)">Class C · 1 source</div>
+          </div>
+        </div>
+        <p class="why"><b>Why it earns its place.</b> Two claims physically becoming one is the Class-B rule made literal — “≥2 independent documents.” It’s the single hardest idea to explain in words and the easiest to show in 400ms.</p>
+      </div>
+
+      <!-- 4 -->
+      <div class="panel">
+        <div class="panel-h"><span class="label">Pattern 04 · Tier ladder</span><span class="label">hover a source</span></div>
+        <div class="tierpick" style="margin-bottom:var(--sp2)">
+          <span class="cite" data-tier="1">NATO NCIA</span>
+          <span class="cite" data-tier="2">CSIS</span>
+          <span class="cite" data-tier="3">Unit 42</span>
+          <span class="cite" data-tier="4">Breaking Defense</span>
+        </div>
+        <div class="ladder" id="ladder">
+          <div class="rung" data-t="4"><span class="bar" style="background:var(--t4)"></span><span class="nm">T4 · exploratory / weak signal</span></div>
+          <div class="rung" data-t="3"><span class="bar" style="background:var(--t3)"></span><span class="nm">T3 · operational &amp; industry</span></div>
+          <div class="rung" data-t="2"><span class="bar" style="background:var(--t2)"></span><span class="nm">T2 · institutional research</span></div>
+          <div class="rung" data-t="1"><span class="bar" style="background:var(--t1)"></span><span class="nm">T1 · official / primary</span></div>
+        </div>
+        <p class="why"><b>Why it earns its place.</b> The palette already encodes authority — the accent <i>is</i> Tier 1. Illuminating a rung shows the reader where a claim’s weight came from without a legend.</p>
+      </div>
+
+      <!-- 5 -->
+      <div class="panel">
+        <div class="panel-h"><span class="label">Pattern 05 · Signal strength</span><button class="act" id="b-meter">Re-run rules</button></div>
+        <div class="meter" id="meter"><span class="seg"></span><span class="seg"></span><span class="seg"></span><span class="seg"></span></div>
+        <div class="meter-read"><span class="st" id="m-state">WEAK</span><span class="dr" id="m-sub">1 evidence row · no Tier-1 source</span></div>
+        <p class="why"><b>Why it earns its place.</b> Strength is <i>computed</i>, never authored. Segments springing up under a “re-run rules” action shows the value changing because the evidence changed — not because someone typed it.</p>
+      </div>
+
+      <!-- 6 -->
+      <div class="panel">
+        <div class="panel-h"><span class="label">Pattern 06 · Pipeline rail</span><button class="act" id="b-pipe">Ingest document</button></div>
+        <div class="rail-run" id="pipe">
+          <div class="stg"><div class="dot"></div><div class="nm">collect</div></div><div class="seg-line"></div>
+          <div class="stg"><div class="dot"></div><div class="nm">jev&nbsp;1</div></div><div class="seg-line"></div>
+          <div class="stg"><div class="dot"></div><div class="nm">extract</div></div><div class="seg-line"></div>
+          <div class="stg"><div class="dot"></div><div class="nm">rules</div></div><div class="seg-line"></div>
+          <div class="stg"><div class="dot"></div><div class="nm">synthesize</div></div><div class="seg-line"></div>
+          <div class="stg"><div class="dot"></div><div class="nm">generate</div></div><div class="seg-line"></div>
+          <div class="stg"><div class="dot"></div><div class="nm">verify</div></div>
+        </div>
+        <p class="why"><b>Why it earns its place.</b> This is the live-demo moment: drop in one Tier-1 document and watch a signal upgrade, a gate close and the report regenerate. The rail is what makes that legible from the back of a room.</p>
+      </div>
+
+    </div>
+  </section>
+
+  <!-- ══ TOKENS ══════════════════════════════════════════════ -->
+  <section id="tokens">
+    <div class="sec-h"><span class="label">02</span><h2>Tokens</h2></div>
+    <p class="lede">The ordinal ramp is the signature: the accent colour <em>is</em> Tier&nbsp;1, and authority fades toward slate as tier descends. Semantic colours never borrow the accent — amber belongs to gates alone.</p>
+
+    <div class="label" style="margin:var(--sp5) 0 var(--sp2)">Ground &amp; structure</div>
+    <div class="swatches">
+      <div class="sw"><div class="fill" style="background:#0C1216"></div><div class="meta"><b>--ground</b><span>#0C1216</span></div></div>
+      <div class="sw"><div class="fill" style="background:#121B21"></div><div class="meta"><b>--panel</b><span>#121B21</span></div></div>
+      <div class="sw"><div class="fill" style="background:#19242C"></div><div class="meta"><b>--raised</b><span>#19242C</span></div></div>
+      <div class="sw"><div class="fill" style="background:#24313A"></div><div class="meta"><b>--line</b><span>#24313A</span></div></div>
+      <div class="sw"><div class="fill" style="background:#DAE5EB"></div><div class="meta"><b>--ink</b><span>#DAE5EB</span></div></div>
+      <div class="sw"><div class="fill" style="background:#74899A"></div><div class="meta"><b>--muted</b><span>#74899A</span></div></div>
+    </div>
+
+    <div class="label" style="margin:var(--sp5) 0 var(--sp2)">Tier ramp — source authority</div>
+    <div class="swatches">
+      <div class="sw"><div class="fill" style="background:#3FB8C4"></div><div class="meta"><b>--t1 / accent</b><span>#3FB8C4 · official</span></div></div>
+      <div class="sw"><div class="fill" style="background:#4E92A8"></div><div class="meta"><b>--t2</b><span>#4E92A8 · research</span></div></div>
+      <div class="sw"><div class="fill" style="background:#55738A"></div><div class="meta"><b>--t3</b><span>#55738A · industry</span></div></div>
+      <div class="sw"><div class="fill" style="background:#4A5D6B"></div><div class="meta"><b>--t4</b><span>#4A5D6B · weak signal</span></div></div>
+    </div>
+
+    <div class="label" style="margin:var(--sp5) 0 var(--sp2)">Semantic — reserved, never decorative</div>
+    <div class="swatches">
+      <div class="sw"><div class="fill" style="background:#DFA13C"></div><div class="meta"><b>--amber</b><span>#DFA13C · open gate</span></div></div>
+      <div class="sw"><div class="fill" style="background:#D65F58"></div><div class="meta"><b>--red</b><span>#D65F58 · blocker</span></div></div>
+      <div class="sw"><div class="fill" style="background:#55A97A"></div><div class="meta"><b>--green</b><span>#55A97A · verified</span></div></div>
+    </div>
+
+    <div class="panel" style="margin-top:var(--sp5)">
+      <div class="panel-h"><span class="label">Geometry &amp; motion constants</span></div>
+      <div class="tbl-wrap"><table>
+        <tr><td>radius</td><td>3px controls · 5px panels. Nothing is pill-shaped; soft corners read as consumer software.</td></tr>
+        <tr><td>spacing</td><td>4 · 8 · 12 · 16 · 24 · 36 · 56 — a 4px grid, no arbitrary values.</td></tr>
+        <tr><td>duration</td><td>150–250ms for state, 300–420ms for layout. Nothing over 500ms.</td></tr>
+        <tr><td>easing</td><td><span class="mono">cubic-bezier(.2,.9,.3,1)</span> default; <span class="mono">(.16,1.4,.4,1)</span> for the stamp only.</td></tr>
+        <tr><td>reduced</td><td><span class="mono">prefers-reduced-motion</span> collapses every duration to 0.01ms. State still changes; only the tween goes.</td></tr>
+      </table></div>
+    </div>
+  </section>
+
+  <!-- ══ TYPE ════════════════════════════════════════════════ -->
+  <section id="type">
+    <div class="sec-h"><span class="label">03</span><h2>Typography</h2></div>
+    <p class="lede">Archivo for language, IBM Plex Mono for everything the system generated — IDs, tiers, class letters, scores. The split is semantic: if a machine produced it, it is set in mono.</p>
+
+    <div class="panel" style="margin-top:var(--sp4)">
+      <div class="typerow"><span class="spec">Archivo 700 · 40/1.05</span><span style="font-size:32px;font-weight:700;letter-spacing:-.02em">Counter-UAS Readiness</span></div>
+      <div class="typerow"><span class="spec">Archivo 600 · 21/1.2</span><span style="font-size:21px;font-weight:600">What is changing</span></div>
+      <div class="typerow"><span class="spec">Archivo 400 · 15/1.55</span><span style="max-width:52ch">Operational fibre-optic UAS show that conventional RF jamming is not a universal answer.</span></div>
+      <div class="typerow"><span class="spec">Plex Mono 500 · 10.5/.14em</span><span class="label">Evidence register</span></div>
+      <div class="typerow"><span class="spec">Plex Mono 400 · 12</span><span class="mono num" style="font-size:12px">EV-001 · Class A · HIGH · T1 · 2026-09-18</span></div>
+    </div>
+  </section>
+
+  <!-- ══ SCREENS ═════════════════════════════════════════════ -->
+  <section id="screens">
+    <div class="sec-h"><span class="label">04</span><h2>Screens</h2></div>
+    <p class="lede">Six routes. Each one has a job in the demo narrative — if a screen doesn’t prove something a sceptical client would otherwise doubt, it doesn’t ship.</p>
+
+    <div class="stack" style="margin-top:var(--sp5)">
+
+      <div class="panel">
+        <div class="panel-h"><span class="route">/</span><span class="label">Command</span></div>
+        <div class="wire">┌──────────────────────────────────────────────────────────┐
+│ ▎FORESIGHT              PILLAR: EW ▾      ⬤ 4 GATES OPEN │
+├────────────┬─────────────────────────────────────────────┤
+│ CYBER   22 │  collect ─ jev1 ─ extract ─ rules ─ … ─ verify│
+│ AI       0 │  ▔▔▔▔▔▔ live pipeline rail ▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔ │
+│ EW      12 │                                             │
+│ PROC     4 │  OPEN GATES                    LATEST REPORT│
+│            │  ⬤ VG-EW-01  UAE gap claims    EW Outlook v3│
+│ 27 sources │  ⬤ VG-CY-01  UAE gap claims    ✓ 0 unsourced│
+└────────────┴─────────────────────────────────────────────┘</div>
+        <p class="proves"><b>Proves:</b> the system is running, and it is already refusing to say four things.</p>
+      </div>
+
+      <div class="panel">
+        <div class="panel-h"><span class="route">/graph</span><span class="label">Ontology explorer</span></div>
+        <div class="wire">┌──────────────────────────────────────────────────────────┐
+│ FILTER: ◉ evidence ◉ signal ◉ finding ○ risk ○ entity     │
+│                                                          │
+│        (EV-001)───┐                                      │
+│                   ├──▶(SIG-EW-04)──▶(F-EW-01)──▶(R-EW-04)│
+│        (EV-014)───┘         ▲                            │
+│                             │  strength computed: STRONG │
+│        (EV-007)─────────────┘                            │
+│                                                          │
+│ ── INSPECT ──────────────────────────────────────────────│
+│ SIG-EW-04 · STRONG_EMERGING · ↑ strengthening            │
+│ 3 evidence · T1 present · rules.py:signal_strength()     │
+└──────────────────────────────────────────────────────────┘</div>
+        <p class="proves"><b>Proves:</b> this is a knowledge graph, not a prompt. Typed objects, typed links, and a named rule behind every score.</p>
+      </div>
+
+      <div class="panel">
+        <div class="panel-h"><span class="route">/reports/[id]</span><span class="label">Report + provenance</span></div>
+        <div class="wire">┌────────────────────────────────┬─────────────────────────┐
+│ ## What is changing            │ PROVENANCE · EV-001     │
+│                                │                         │
+│ Operational fibre-optic UAS    │ CLAIM                   │
+│ show that conventional RF      │ Fibre-optic UAS are      │
+│ jamming is not a universal     │ immune to conventional  │
+│ answer [EV-001][EV-014].       │ RF countermeasures.     │
+│                                │                         │
+│ ▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓ │ QUOTE SPAN              │
+│ ⟨ CUSTOMER VALIDATION REQ'D ⟩  │ “…immune to conventional│
+│                                │ RF countermeasures…”    │
+│ Class C evidence is marked as  │                         │
+│ unproven throughout [EV-022].  │ T1 ▓ UK MOD · Class A   │
+│                                │ rule: class_check()     │
+└────────────────────────────────┴─────────────────────────┘</div>
+        <p class="proves"><b>Proves:</b> the core argument. Claim → quote → source → tier → the rule that assigned the class, in two clicks.</p>
+      </div>
+
+      <div class="panel">
+        <div class="panel-h"><span class="route">/reports/[id]/trace</span><span class="label">Generation trace</span></div>
+        <div class="wire">┌──────────────────────────────────────────────────────────┐
+│ SECTION 2 · What is changing                             │
+│                                                          │
+│ INPUTS DECLARED    evidence, signals                     │
+│ ROWS PASSED        12 evidence · 4 signals   (of 22 · 6)│
+│ WITHHELD           10 evidence — not linked to section   │
+│ INSTRUCTION        “Only Class A/B may be stated as      │
+│                     fact; Class C must be marked…”       │
+│ CITATIONS EMITTED  EV-001 EV-014 EV-022 SIG-EW-04        │
+│ VERIFIER           ✓ 4/4 entailed · 0 unsourced · 0 gate │
+└──────────────────────────────────────────────────────────┘</div>
+        <p class="proves"><b>Proves:</b> bounded generation is real. It shows what was deliberately withheld from the model — which is the part a sceptic actually wants to see.</p>
+      </div>
+
+      <div class="panel">
+        <div class="panel-h"><span class="route">/verify/[id]</span><span class="label">Verification scorecard</span></div>
+        <div class="wire">┌──────────────────────────────────────────────────────────┐
+│                      THIS SYSTEM      HUMAN V1.0         │
+│ Citation faithfulness      0.97            0.81          │
+│ Unsourced assertions          0              31          │
+│ Gate violations               0               —          │
+│ Chain completeness          94%             n/a          │
+│ Signal recall (SIG-01..19)  74%            100%          │
+│ Regeneration time          6 min          ~3 weeks       │
+└──────────────────────────────────────────────────────────┘</div>
+        <p class="proves"><b>Proves:</b> the claim is measured, not asserted — and it concedes the axis where the humans still win.</p>
+      </div>
+
+      <div class="panel">
+        <div class="panel-h"><span class="route">/sources</span><span class="label">Registry health</span></div>
+        <div class="wire">┌──────────────────────────────────────────────────────────┐
+│ LANE A  scheduled   14 sources   last run 03:17  ✓ 20 doc│
+│ LANE B  question    10 sources   EW-02 · 10 articles     │
+│ LANE C  structured   3 sources   ATT&CK 36 · NVD 20      │
+│                                                          │
+│ T1 ▓▓▓▓▓▓▓▓▓▓▓ 11   NCIA ⚠ 403 → reached via search      │
+│ T2 ▓▓▓▓ 4           CSC  ⚠ TLS  → reached via search      │
+│ T3 ▓▓▓ 3            Janes ⊘ paywalled — decision pending │
+│ T4 ▓▓▓▓▓▓▓▓▓ 9                                           │
+└──────────────────────────────────────────────────────────┘</div>
+        <p class="proves"><b>Proves:</b> the corpus is governed, not scraped at random — including honesty about what can’t be reached.</p>
+      </div>
+
+    </div>
+  </section>
+
+  <!-- ══ COMPONENTS ══════════════════════════════════════════ -->
+  <section id="components">
+    <div class="sec-h"><span class="label">05</span><h2>Components</h2></div>
+    <p class="lede">Hand-built, roughly fourteen. No component library — shadcn’s defaults are recognisable, and “recognisable” is the failure mode we’re designing against.</p>
+    <div class="tbl-wrap" style="margin-top:var(--sp4)"><table>
+      <thead><tr><th>Component</th><th>Role</th><th>Motion</th></tr></thead>
+      <tbody>
+        <tr><td>Panel</td><td>Bordered surface with label header and optional action</td><td>—</td></tr>
+        <tr><td>PillarRail</td><td>Left nav, live counts per pillar</td><td>count tween on change</td></tr>
+        <tr><td>PipelineRail</td><td>Six-stage run state</td><td>Pattern 06</td></tr>
+        <tr><td>GateCard</td><td>Open gate, what it blocks, which rule raised it</td><td>Pattern 02</td></tr>
+        <tr><td>Citation</td><td>Inline <span class="mono">[EV-xxx]</span> trigger</td><td>hover lift, opens drawer</td></tr>
+        <tr><td>ProvenanceDrawer</td><td>Claim → quote → source → tier → rule</td><td>slide + Pattern 04</td></tr>
+        <tr><td>ChainStrip</td><td>Question → … → Risk traversal</td><td>Pattern 01</td></tr>
+        <tr><td>SignalMeter</td><td>Four-segment computed strength</td><td>Pattern 05</td></tr>
+        <tr><td>EvidenceCard</td><td>Claim, class, confidence, source count</td><td>Pattern 03</td></tr>
+        <tr><td>TierLadder</td><td>T4→T1 authority indicator</td><td>Pattern 04</td></tr>
+        <tr><td>DataTable</td><td>Dense register, sticky head, tier stripe</td><td>row reveal stagger 20ms</td></tr>
+        <tr><td>GraphCanvas</td><td>Force-directed ontology, typed edges</td><td>settle, focus-zoom</td></tr>
+        <tr><td>ScoreRow</td><td>Head-to-head metric vs human baseline</td><td>count-up on enter</td></tr>
+        <tr><td>RiskMatrix</td><td>L×I grid, severity stripe</td><td>cell focus</td></tr>
+      </tbody>
+    </table></div>
+  </section>
+
+  <!-- ══ BUILD ═══════════════════════════════════════════════ -->
+  <section id="build">
+    <div class="sec-h"><span class="label">06</span><h2>Build order</h2></div>
+    <p class="lede">Sequenced so there is something demo-able after every step, and so the highest-risk screen isn’t the last one attempted.</p>
+    <div class="seq" style="margin-top:var(--sp5)">
+      <div class="step"><span class="n">01</span><div><h3>Token layer &amp; shell</h3><p>Tailwind v4 with these tokens as CSS variables, the Archivo/Plex pairing, Panel + PillarRail + the app shell. Port the four existing pages onto it.</p></div></div>
+      <div class="step"><span class="n">02</span><div><h3>Registers</h3><p>Evidence and signal tables, DataTable with tier stripes, SignalMeter. Cheap, and it makes the 22 live documents visible immediately.</p></div></div>
+      <div class="step"><span class="n">03</span><div><h3>Provenance drawer</h3><p>Citation → drawer → TierLadder → the rule name. The core argument, and a prerequisite for the report screen.</p></div></div>
+      <div class="step"><span class="n">04</span><div><h3>Report &amp; generation trace</h3><p>Rendered markdown with live citation triggers, plus the trace view. Requires fixing <span class="mono">fetch_inputs</span> to honour section links first — the trace would otherwise show “10 withheld: none.”</p></div></div>
+      <div class="step"><span class="n">05</span><div><h3>Gates &amp; verification scorecard</h3><p>GateCard with Pattern 02, then the head-to-head numbers once <span class="mono">evaluate.py</span> exists.</p></div></div>
+      <div class="step"><span class="n">06</span><div><h3>Ontology graph</h3><p>Highest risk, highest payoff — built last, on top of components already proven by the screens above.</p></div></div>
+    </div>
+  </section>
+
+  <footer>
+    Foresight Console · design system v1 · tokens, motion and screen architecture for the Tawazun neurosymbolic foresight platform. Demo figures on <span class="mono">/verify</span> are illustrative pending the first generated report.
+  </footer>
+
+</main>
+</div>
+
+<script>
+(function(){
+  var rm = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+  var D = function(ms){ return rm ? 0 : ms; };
+
+  /* 01 — chain traversal */
+  var chain = document.getElementById("chain");
+  var parts = chain ? Array.prototype.slice.call(chain.children) : [];
+  function runChain(){
+    parts.forEach(function(el){ el.classList.remove("lit"); });
+    parts.forEach(function(el, i){
+      setTimeout(function(){ el.classList.add("lit"); }, D(i * 130));
+    });
+  }
+  ["b-chain","c-chain"].forEach(function(id){
+    var el = document.getElementById(id);
+    if(el) el.addEventListener("click", runChain);
+  });
+
+  /* 02 — gate stamp */
+  var gate = document.getElementById("gate"), bGate = document.getElementById("b-gate");
+  if(bGate) bGate.addEventListener("click", function(){
+    gate.classList.toggle("blocked");
+    bGate.textContent = gate.classList.contains("blocked") ? "Reset" : "Assert UAE gap";
+  });
+
+  /* 03 — corroboration merge */
+  var merge = document.getElementById("merge"), bMerge = document.getElementById("b-merge"), clA = document.getElementById("cl-a");
+  if(bMerge) bMerge.addEventListener("click", function(){
+    var on = merge.classList.toggle("merged");
+    bMerge.textContent = on ? "Reset" : "Corroborate";
+    setTimeout(function(){
+      clA.textContent = on ? "Class B · 2 independent sources" : "Class C · 1 source";
+      clA.style.color = on ? "var(--accent)" : "var(--t2)";
+    }, D(220));
+  });
+
+  /* 04 — tier ladder */
+  var rungs = Array.prototype.slice.call(document.querySelectorAll("#ladder .rung"));
+  function lightTier(t){
+    rungs.forEach(function(r){ r.classList.toggle("on", Number(r.dataset.t) >= Number(t)); });
+  }
+  document.querySelectorAll(".tierpick .cite").forEach(function(c){
+    c.addEventListener("mouseenter", function(){ lightTier(c.dataset.tier); });
+    c.addEventListener("focus", function(){ lightTier(c.dataset.tier); });
+    c.setAttribute("tabindex","0");
+  });
+  lightTier(1);
+
+  /* 05 — signal meter */
+  var segs = Array.prototype.slice.call(document.querySelectorAll("#meter .seg"));
+  var mState = document.getElementById("m-state"), mSub = document.getElementById("m-sub");
+  var levels = [
+    {n:1, s:"WEAK",            d:"1 evidence row · no Tier-1 source"},
+    {n:2, s:"EMERGING",        d:"2 independent documents"},
+    {n:3, s:"STRONG_EMERGING", d:"2 independent + Tier-1 present"},
+    {n:4, s:"STRONG",          d:"3 independent documents"}
+  ];
+  var li = 0;
+  function setMeter(){
+    var L = levels[li];
+    segs.forEach(function(s, i){
+      setTimeout(function(){ s.classList.toggle("on", i < L.n); }, D(i * 60));
+    });
+    mState.textContent = L.s; mSub.textContent = L.d;
+  }
+  var bMeter = document.getElementById("b-meter");
+  if(bMeter) bMeter.addEventListener("click", function(){ li = (li + 1) % levels.length; setMeter(); });
+  setMeter();
+
+  /* 06 — pipeline rail */
+  var pipe = document.getElementById("pipe");
+  var pieces = pipe ? Array.prototype.slice.call(pipe.children) : [];
+  var running = false;
+  var bPipe = document.getElementById("b-pipe");
+  if(bPipe) bPipe.addEventListener("click", function(){
+    if(running) return;
+    running = true;
+    pieces.forEach(function(el){ el.classList.remove("on","done"); });
+    var i = 0;
+    (function step(){
+      if(i >= pieces.length){ running = false; bPipe.textContent = "Ingest document"; return; }
+      var el = pieces[i];
+      el.classList.add("on");
+      if(i >= 2) { var prev = pieces[i-2]; if(prev.classList.contains("stg")) { prev.classList.remove("on"); prev.classList.add("done"); } }
+      i++;
+      setTimeout(step, D(el.classList.contains("stg") ? 260 : 170));
+    })();
+    bPipe.textContent = "Running…";
+  });
+})();
+</script>

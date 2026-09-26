@@ -1,0 +1,96 @@
+name: collect
+
+# Lane A runs daily across all four pillars; Lane C reloads the structured
+# datasets weekly (ATT&CK and NVD change slowly and ATT&CK is a ~54 MB pull).
+# Lane B is deliberately NOT scheduled — it is question-driven and is triggered
+# by hand or by the Strategic Watch loop.
+on:
+  schedule:
+    - cron: "17 3 * * *"      # daily 03:17 UTC — Lane A
+    - cron: "42 4 * * 0"      # Sundays 04:42 UTC — Lane C
+  workflow_dispatch:
+    inputs:
+      lane:
+        description: "Lane to run (a, b or c)"
+        required: true
+        default: "a"
+        type: choice
+        options: ["a", "b", "c"]
+      pillar:
+        description: "Lane A pillar (blank = all four)"
+        required: false
+        type: string
+      question_id:
+        description: "Lane B question id, e.g. EW-02"
+        required: false
+        type: string
+      loader:
+        description: "Lane C loader"
+        required: false
+        default: "attack"
+        type: choice
+        options: ["attack", "nvd"]
+
+concurrency:
+  group: collect-${{ github.ref }}
+  cancel-in-progress: false
+
+env:
+  SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+  SUPABASE_SERVICE_KEY: ${{ secrets.SUPABASE_SERVICE_KEY }}
+  SERPER_API_KEY: ${{ secrets.SERPER_API_KEY }}
+
+jobs:
+  lane-a:
+    # daily cron, or a manual dispatch asking for lane a
+    if: github.event.schedule == '17 3 * * *' || github.event.inputs.lane == 'a'
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    strategy:
+      fail-fast: false          # one pillar failing must not cancel the others
+      matrix:
+        pillar: [CYBERSECURITY, AI, ELECTRONIC_WARFARE, PROCUREMENT]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+      - run: pip install -r pipeline/requirements.txt
+      - name: "Lane A: scheduled feeds"
+        if: github.event.inputs.pillar == '' || github.event.inputs.pillar == matrix.pillar
+        run: python pipeline/collect.py --lane a --pillar ${{ matrix.pillar }} --limit 8
+
+  lane-c:
+    # weekly cron, or a manual dispatch asking for lane c
+    if: github.event.schedule == '42 4 * * 0' || github.event.inputs.lane == 'c'
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+      - run: pip install -r pipeline/requirements.txt
+      - name: "Lane C: MITRE ATT&CK"
+        if: github.event.inputs.loader != 'nvd'
+        run: python pipeline/collect.py --lane c --loader attack
+      - name: "Lane C: NVD"
+        if: github.event.inputs.loader != 'attack'
+        run: python pipeline/collect.py --lane c --loader nvd --limit 20
+
+  lane-b:
+    # manual only — research starts from a strategic question, not a schedule
+    if: github.event.inputs.lane == 'b'
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+      - run: pip install -r pipeline/requirements.txt
+      - name: "Lane B: question-driven search"
+        run: python pipeline/collect.py --lane b --question-id "${{ github.event.inputs.question_id }}"

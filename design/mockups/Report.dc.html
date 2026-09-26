@@ -1,0 +1,136 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Generate report</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Instrument+Sans:wght@400;500;600&display=swap">
+<style>
+body{margin:0;font-family:'Instrument Sans',sans-serif;background:#F4F5FA;color:#12162E}
+a{color:#5B7CF0;text-decoration:none}a:hover{color:#3D5BF5}
+</style>
+</helmet>
+<div style="width: 1440px; height: 900px; box-sizing: border-box; display: flex; background: #F4F5FA; overflow: hidden">
+
+  <div style="width: 228px; flex-shrink: 0; box-sizing: border-box; background: #FFFFFF; border-right: 1px solid #E7EAF4; display: flex; flex-direction: column; padding: 22px 14px">
+    <div style="font-family: 'Space Grotesk'; font-weight: 700; font-size: 17px; letter-spacing: 0.4px; padding: 0 10px 20px 10px">FORESIGHT<span style="color: #5B7CF0">.</span></div>
+    <div style="display: flex; flex-direction: column; gap: 2px">
+      <div style="display: flex; align-items: center; gap: 10px; padding: 9px 10px; border-radius: 10px; font-size: 13.5px; color: #5A6076"><span style="width: 7px; height: 7px; border-radius: 3.5px; background: #C9D0E4"></span>Overview</div>
+      <div style="display: flex; align-items: center; gap: 10px; padding: 9px 10px; border-radius: 10px; font-size: 13.5px; color: #5A6076"><span style="width: 7px; height: 7px; border-radius: 3.5px; background: #C9D0E4"></span>Pillars</div>
+      <div style="display: flex; align-items: center; gap: 10px; padding: 9px 10px; border-radius: 10px; font-size: 13.5px; color: #5A6076"><span style="width: 7px; height: 7px; border-radius: 3.5px; background: #C9D0E4"></span>Evidence</div>
+      <div style="display: flex; align-items: center; gap: 10px; padding: 9px 10px; border-radius: 10px; font-size: 13.5px; color: #5A6076"><span style="width: 7px; height: 7px; border-radius: 3.5px; background: #C9D0E4"></span>Sources</div>
+      <div style="display: flex; align-items: center; gap: 10px; padding: 9px 10px; border-radius: 10px; background: #EEF1FC; font-weight: 600; font-size: 13.5px"><span style="width: 7px; height: 7px; border-radius: 3.5px; background: #5B7CF0"></span>Reports</div>
+      <div style="display: flex; align-items: center; gap: 10px; padding: 9px 10px; border-radius: 10px; font-size: 13.5px; color: #5A6076"><span style="width: 7px; height: 7px; border-radius: 3.5px; background: #C9D0E4"></span>Runs</div>
+    </div>
+    <div style="flex-grow: 1"></div>
+    <button aria-label="Ask the graph" style="display: flex; align-items: center; justify-content: space-between; padding: 11px 14px; border-radius: 999px; border: 1px solid #E0E5F2; background: #F8F9FD; font-family: 'Instrument Sans'; font-size: 13px; color: #3C4258; cursor: pointer">
+      <span style="font-weight: 600">Ask the graph</span>
+      <span style="font-size: 11px; color: #9AA1B8; background: #FFFFFF; border: 1px solid #E7EAF4; border-radius: 6px; padding: 2px 7px">⌘K</span>
+    </button>
+  </div>
+
+  <div style="flex-grow: 1; box-sizing: border-box; padding: 26px 28px; display: flex; gap: 22px; overflow: hidden">
+
+    <div style="width: 360px; flex-shrink: 0; display: flex; flex-direction: column; gap: 14px">
+      <div>
+        <div style="font-size: 11.5px; letter-spacing: 2px; color: #8A92AE; font-weight: 600">NEW REPORT</div>
+        <div style="font-family: 'Space Grotesk'; font-weight: 700; font-size: 26px; letter-spacing: -0.4px; margin-top: 4px">Generate a brief</div>
+      </div>
+      <div style="background: #FFFFFF; border: 1px solid #E7EAF4; border-radius: 16px; padding: 20px; display: flex; flex-direction: column; gap: 16px">
+        <div>
+          <label for="pillar" style="font-size: 12px; font-weight: 600; color: #5A6076">Pillar</label>
+          <div style="display: flex; gap: 6px; margin-top: 8px; flex-wrap: wrap">
+            <span style="font-size: 12px; font-weight: 600; color: #FFFFFF; background: #1E2761; border-radius: 999px; padding: 7px 14px">Cybersecurity</span>
+            <span style="font-size: 12px; font-weight: 600; color: #5A6076; background: #F4F5FA; border: 1px solid #E7EAF4; border-radius: 999px; padding: 7px 14px">AI</span>
+            <span style="font-size: 12px; font-weight: 600; color: #5A6076; background: #F4F5FA; border: 1px solid #E7EAF4; border-radius: 999px; padding: 7px 14px">EW</span>
+            <span style="font-size: 12px; font-weight: 600; color: #5A6076; background: #F4F5FA; border: 1px solid #E7EAF4; border-radius: 999px; padding: 7px 14px">Procurement</span>
+          </div>
+        </div>
+        <div>
+          <label for="template" style="font-size: 12px; font-weight: 600; color: #5A6076">Template</label>
+          <div style="margin-top: 8px; display: flex; align-items: center; justify-content: space-between; border: 1px solid #E7EAF4; border-radius: 10px; padding: 11px 14px; font-size: 13.5px">
+            <span style="font-weight: 600">Strategic Foresight Brief</span>
+            <span style="color: #9AA1B8; font-size: 11px">7 sections</span>
+          </div>
+        </div>
+        <div>
+          <label for="scope" style="font-size: 12px; font-weight: 600; color: #5A6076">Question scope</label>
+          <div style="margin-top: 8px; display: flex; flex-direction: column; gap: 8px; font-size: 13px; color: #2A2F45">
+            <div style="display: flex; align-items: center; gap: 9px"><input id="q1" type="checkbox" checked style="accent-color: #5B7CF0"><label for="q1">CS-01 · Connected-architecture cyber risk</label></div>
+            <div style="display: flex; align-items: center; gap: 9px"><input id="q2" type="checkbox" checked style="accent-color: #5B7CF0"><label for="q2">CS-02 · Supplier &amp; software dependencies</label></div>
+            <div style="display: flex; align-items: center; gap: 9px"><input id="q3" type="checkbox" style="accent-color: #5B7CF0"><label for="q3">CS-03 · Assurance evidence for acquisition</label></div>
+          </div>
+        </div>
+        <button style="font-family: 'Instrument Sans'; font-size: 14px; font-weight: 600; color: #FFFFFF; background: #5B7CF0; border: none; border-radius: 999px; padding: 12px 18px; cursor: pointer">Run the pipeline</button>
+        <div style="font-size: 11.5px; color: #8A92AE; line-height: 1.5">Sections that fail verification are withheld, never shipped. Open gates render as “Customer Validation Required”.</div>
+      </div>
+    </div>
+
+    <div style="flex-grow: 1; border-radius: 20px; background: #0A0F2E; background-image: radial-gradient(700px 380px at 20% 125%, rgba(84,116,255,0.5), rgba(84,116,255,0) 65%); box-sizing: border-box; padding: 28px 32px; color: #FFFFFF; display: flex; flex-direction: column; min-width: 0; overflow: hidden">
+      <div style="display: flex; align-items: center; justify-content: space-between">
+        <div style="font-family: 'Space Grotesk'; font-weight: 600; font-size: 18px">Cyber Threat Baseline — UAE</div>
+        <span style="font-size: 11px; font-weight: 700; letter-spacing: 1px; color: #7EE0A9; background: rgba(74,222,128,0.12); border: 1px solid rgba(74,222,128,0.3); border-radius: 999px; padding: 5px 12px">RUNNING · STAGE 5 / 7</span>
+      </div>
+
+      <div style="display: flex; flex-direction: column; gap: 0; margin-top: 22px">
+        <div style="display: flex; align-items: center; gap: 14px; padding: 9px 0">
+          <span style="width: 22px; height: 22px; border-radius: 11px; background: #4ADE80; color: #0A0F2E; display: flex; align-items: center; justify-content: center; font-size: 12px; font-weight: 700; flex-shrink: 0">✓</span>
+          <span style="font-size: 14px; font-weight: 600; width: 150px">Collect</span>
+          <span style="font-size: 12.5px; color: #9FB0E6">22 documents · 27 sources · lanes A + C</span>
+        </div>
+        <div style="display: flex; align-items: center; gap: 14px; padding: 9px 0">
+          <span style="width: 22px; height: 22px; border-radius: 11px; background: #4ADE80; color: #0A0F2E; display: flex; align-items: center; justify-content: center; font-size: 12px; font-weight: 700; flex-shrink: 0">✓</span>
+          <span style="font-size: 14px; font-weight: 600; width: 150px">Gate 1 · relevance</span>
+          <span style="font-size: 12.5px; color: #9FB0E6">3 documents skipped below p = 0.60</span>
+        </div>
+        <div style="display: flex; align-items: center; gap: 14px; padding: 9px 0">
+          <span style="width: 22px; height: 22px; border-radius: 11px; background: #4ADE80; color: #0A0F2E; display: flex; align-items: center; justify-content: center; font-size: 12px; font-weight: 700; flex-shrink: 0">✓</span>
+          <span style="font-size: 14px; font-weight: 600; width: 150px">Extract</span>
+          <span style="font-size: 12.5px; color: #9FB0E6">14 evidence rows · 2 rejected by quote check</span>
+        </div>
+        <div style="display: flex; align-items: center; gap: 14px; padding: 9px 0">
+          <span style="width: 22px; height: 22px; border-radius: 11px; background: #4ADE80; color: #0A0F2E; display: flex; align-items: center; justify-content: center; font-size: 12px; font-weight: 700; flex-shrink: 0">✓</span>
+          <span style="font-size: 14px; font-weight: 600; width: 150px">Rules &amp; gates</span>
+          <span style="font-size: 12.5px; color: #9FB0E6">VG-CY-01 passed · 3 gates open on other pillars</span>
+        </div>
+        <div style="display: flex; align-items: center; gap: 14px; padding: 9px 0">
+          <span style="width: 22px; height: 22px; border-radius: 11px; background: #5B7CF0; color: #FFFFFF; display: flex; align-items: center; justify-content: center; font-size: 11px; font-weight: 700; flex-shrink: 0; box-shadow: 0 0 0 5px rgba(91,124,240,0.25)">●</span>
+          <span style="font-size: 14px; font-weight: 600; width: 150px">Synthesize</span>
+          <span style="font-size: 12.5px; color: #C7D2F7">admitting signals · 4 proposed, 2 held for corroboration</span>
+        </div>
+        <div style="display: flex; align-items: center; gap: 14px; padding: 9px 0; opacity: 0.45">
+          <span style="width: 22px; height: 22px; border-radius: 11px; border: 1.5px solid #5A6698; flex-shrink: 0"></span>
+          <span style="font-size: 14px; font-weight: 600; width: 150px">Generate</span>
+          <span style="font-size: 12.5px; color: #9FB0E6">section-scoped inputs, per-claim citations</span>
+        </div>
+        <div style="display: flex; align-items: center; gap: 14px; padding: 9px 0; opacity: 0.45">
+          <span style="width: 22px; height: 22px; border-radius: 11px; border: 1.5px solid #5A6698; flex-shrink: 0"></span>
+          <span style="font-size: 14px; font-weight: 600; width: 150px">Verify</span>
+          <span style="font-size: 12.5px; color: #9FB0E6">citations resolve · gates honoured · entailment</span>
+        </div>
+      </div>
+
+      <div style="flex-grow: 1"></div>
+      <div style="border-top: 1px solid rgba(255,255,255,0.12); padding-top: 16px">
+        <div style="font-size: 11px; letter-spacing: 2px; color: #93A7E8; font-weight: 600">GENERATION LEDGER · LIVE</div>
+        <div style="display: flex; gap: 26px; margin-top: 12px; font-size: 12.5px; color: #C6CFF2">
+          <span>Executive summary — <b style="color: #FFFFFF">2 risks · 2 findings passed</b> · 0 withheld</span>
+          <span>What is changing — <b style="color: #FFFFFF">4 signals · 14 evidence passed</b> · scoped</span>
+          <span>UAE meaning — <b style="color: #FFC96B">3 gates injected verbatim</b></span>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1440,"height":900}}'>
+class Component extends DCLogic {
+  renderVals() { return {}; }
+}
+</script>
+</body>
+</html>

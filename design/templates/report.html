@@ -1,0 +1,261 @@
+<title>{{TITLE}}</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Spectral:ital,wght@0,300;0,400;0,600;1,400&family=Archivo:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<style>
+:root{
+  --paper:#FAFAF9;--leaf:#F2F3F2;--sunk:#EAEBEA;--rule:#DCDEDD;--rule-soft:#E8E9E8;
+  --ink:#16191C;--ink-2:#3C444B;--muted:#6E767D;--faint:#9AA1A6;
+  --t1:#0F6E78;--t2:#3A7A8C;--t3:#5E7683;--t4:#8A97A0;
+  --gate:#A8681A;--gate-bg:#F6EFE3;--bad:#A8403A;--good:#2E7350;
+  --serif:"Spectral",Georgia,serif;--sans:"Archivo",system-ui,sans-serif;
+  --mono:"IBM Plex Mono",ui-monospace,Menlo,monospace;--ez:cubic-bezier(.2,.9,.3,1);
+}
+@media(prefers-color-scheme:dark){:root:not([data-theme="light"]){
+  --paper:#101619;--leaf:#161E22;--sunk:#0B1013;--rule:#263136;--rule-soft:#1C262A;
+  --ink:#E3E8E9;--ink-2:#B3BEC3;--muted:#849097;--faint:#5C686E;
+  --t1:#49BCC6;--t2:#5E9DAE;--t3:#6E8794;--t4:#7C8A93;
+  --gate:#D9A04A;--gate-bg:#241D0F;--bad:#D4726C;--good:#5DA97D;}}
+:root[data-theme="dark"]{
+  --paper:#101619;--leaf:#161E22;--sunk:#0B1013;--rule:#263136;--rule-soft:#1C262A;
+  --ink:#E3E8E9;--ink-2:#B3BEC3;--muted:#849097;--faint:#5C686E;
+  --t1:#49BCC6;--t2:#5E9DAE;--t3:#6E8794;--t4:#7C8A93;
+  --gate:#D9A04A;--gate-bg:#241D0F;--bad:#D4726C;--good:#5DA97D;}
+*{box-sizing:border-box}
+body{margin:0;background:var(--paper);color:var(--ink);font-family:var(--serif);font-size:16px;line-height:1.68}
+h1,h3,h4{margin:0;font-weight:600;text-wrap:balance}
+p{margin:0}
+button{font-family:inherit;cursor:pointer}
+:focus-visible{outline:2px solid var(--t1);outline-offset:2px}
+.mono{font-family:var(--mono)}
+.tag{font-family:var(--mono);font-size:9.5px;letter-spacing:.14em;text-transform:uppercase;color:var(--muted)}
+.ctl{position:sticky;top:0;z-index:20;background:var(--leaf);border-bottom:1px solid var(--rule);
+     display:flex;align-items:center;gap:16px;padding:9px 26px;flex-wrap:wrap}
+.ctl .cls{font-family:var(--mono);font-size:10px;letter-spacing:.16em;text-transform:uppercase;
+          color:var(--bad);border:1px solid var(--bad);border-radius:2px;padding:2px 7px}
+.ctl .meta{font-family:var(--mono);font-size:10.5px;color:var(--muted)}
+.ctl .sp{flex:1}
+.status{font-family:var(--mono);font-size:10px;letter-spacing:.1em;text-transform:uppercase;
+        color:var(--gate);background:var(--gate-bg);border:1px solid var(--gate);border-radius:2px;padding:3px 8px}
+.tog{background:none;border:1px solid var(--rule);border-radius:2px;color:var(--muted);font-family:var(--mono);font-size:10px;padding:3px 8px}
+.wrap{max-width:1080px;margin:0 auto;padding:44px 26px 90px;display:grid;grid-template-columns:minmax(0,1fr) 260px;gap:38px}
+@media(max-width:980px){.wrap{grid-template-columns:1fr}}
+.mast{border-bottom:2px solid var(--ink);padding-bottom:18px;margin-bottom:26px}
+.mast .org{font-family:var(--mono);font-size:10.5px;letter-spacing:.2em;text-transform:uppercase;color:var(--muted)}
+.mast h1{font-size:38px;line-height:1.12;letter-spacing:-.018em;margin:11px 0 10px}
+.mast .by{display:flex;flex-wrap:wrap;gap:15px;font-family:var(--mono);font-size:10.5px;color:var(--muted)}
+.mast .by b{color:var(--ink-2);font-weight:500}
+.doc h3{font-family:var(--sans);font-size:12px;font-weight:600;letter-spacing:.15em;text-transform:uppercase;
+        color:var(--muted);margin:34px 0 12px;padding-top:15px;border-top:1px solid var(--rule)}
+.doc h4{font-size:19px;margin:20px 0 8px;letter-spacing:-.01em}
+.doc p{margin-bottom:13px;max-width:64ch}
+.doc p.li{padding-left:16px;position:relative}
+.doc p.li::before{content:"—";position:absolute;left:0;color:var(--faint)}
+.c{font-family:var(--mono);font-size:11px;color:var(--t1);border-bottom:1px solid currentColor;cursor:pointer;padding:0 1px;white-space:nowrap;margin:0 2px}
+.c:hover{background:var(--sunk)}
+.c.bad{color:var(--bad);border-bottom-style:dashed}
+.obj{font-family:var(--mono);font-size:11px;color:var(--ink-2);background:var(--sunk);border-radius:2px;padding:0 3px}
+.tw{overflow-x:auto;margin:6px 0 16px}
+table{width:100%;border-collapse:collapse;font-family:var(--sans);font-size:12px}
+th{text-align:left;font-family:var(--mono);font-size:9.5px;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);
+   font-weight:500;padding:0 12px 7px 0;border-bottom:1px solid var(--rule);white-space:nowrap}
+td{padding:8px 12px 8px 0;border-bottom:1px solid var(--rule-soft);color:var(--ink-2);vertical-align:top}
+aside{position:sticky;top:60px;align-self:start;max-height:calc(100vh - 90px);overflow-y:auto;
+      font-family:var(--sans);font-size:11.5px;line-height:1.5}
+.pan{border:1px solid var(--rule);border-radius:3px;background:var(--leaf);padding:12px;margin-bottom:12px}
+.pan .tag{display:block;margin-bottom:8px}
+.vrow{display:flex;justify-content:space-between;gap:10px;font-family:var(--mono);font-size:10.5px;padding:3px 0;color:var(--muted)}
+.vrow b{color:var(--ink-2);font-weight:500}
+.vrow.ok b{color:var(--good)}
+.vrow.warn b{color:var(--gate)}
+.vrow.err b{color:var(--bad)}
+.ent{padding:7px 0;border-top:1px solid var(--rule-soft);cursor:pointer}
+.ent:first-of-type{border-top:0}
+.eid{font-family:var(--mono);font-size:10.5px;color:var(--t1);display:block}
+.esrc{color:var(--muted);display:block;margin-top:1px}
+.bars{display:flex;gap:2px;margin-top:4px}
+.bars i{height:3px;width:14px;border-radius:1px;background:var(--rule);display:block}
+.bars i.f{background:var(--t1)}
+.pop{position:fixed;z-index:40;width:320px;background:var(--paper);border:1px solid var(--rule);border-radius:3px;
+     box-shadow:0 10px 34px rgba(0,0,0,.16);padding:14px;opacity:0;visibility:hidden;transform:translateY(5px);
+     transition:opacity .16s var(--ez),transform .16s var(--ez),visibility .16s;font-family:var(--sans);font-size:12px}
+.pop.on{opacity:1;visibility:visible;transform:none}
+.pop .ph{font-family:var(--mono);font-size:10.5px;color:var(--t1);margin-bottom:7px}
+.pop .pc{color:var(--ink-2);line-height:1.5;margin-bottom:9px}
+.pop .pq{font-family:var(--mono);font-size:10px;line-height:1.65;color:var(--ink);background:var(--sunk);
+         border-left:2px solid var(--t1);padding:8px 10px;word-break:break-word;margin-bottom:9px}
+.pop .pr{display:flex;align-items:center;gap:8px;padding:2px 5px;border-radius:2px}
+.pop .pr i{width:24px;height:3px;border-radius:1px;opacity:.26;display:block}
+.pop .pr span{font-family:var(--mono);font-size:9.5px;color:var(--faint)}
+.pop .pr.on{background:var(--sunk)}.pop .pr.on i{opacity:1}.pop .pr.on span{color:var(--ink)}
+.pop .prule{font-family:var(--mono);font-size:9.5px;color:var(--t1);border-top:1px dashed var(--rule);padding-top:8px;margin-top:8px}
+details summary{font-family:var(--mono);font-size:10px;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);cursor:pointer;list-style:none}
+details summary::-webkit-details-marker{display:none}
+details[open] summary{margin-bottom:7px}
+.led{font-family:var(--mono);font-size:10px;line-height:1.7;color:var(--ink-2)}
+.led span{color:var(--muted)}
+footer{max-width:1080px;margin:0 auto;padding:22px 26px 50px;border-top:1px solid var(--rule);
+       font-family:var(--mono);font-size:10px;color:var(--faint);line-height:1.8}
+@media(prefers-reduced-motion:reduce){*{transition-duration:.01ms!important}}
+.printonly{display:none}
+
+/* ── print ────────────────────────────────────────────────────────────────
+   Screen gets a margin apparatus; paper gets a single column and a full
+   evidence appendix, because a reader holding the PDF cannot click a citation.
+   Colours are forced to the light set — a dark-mode PDF is unreadable on paper.
+   ─────────────────────────────────────────────────────────────────────── */
+@media print{
+  :root{
+    --paper:#fff;--leaf:#F4F5F4;--sunk:#EFF0EF;--rule:#C9CDCC;--rule-soft:#E2E4E3;
+    --ink:#101315;--ink-2:#33393E;--muted:#5E666C;--faint:#8A9298;
+    --t1:#0B5A63;--t2:#2F6478;--t3:#4E626E;--t4:#77838B;
+    --gate:#8A5312;--gate-bg:#F7F1E6;--bad:#8E332E;--good:#255E42;
+  }
+  @page{size:A4;margin:17mm 15mm 16mm}
+  body{background:#fff;font-size:10.2pt;line-height:1.52}
+  .tog,aside,.pop{display:none!important}
+  .printonly{display:block}
+  .ctl{position:static;padding:0 0 7px;border-bottom:1.5px solid var(--ink);
+       background:none;margin-bottom:16px}
+  .wrap{display:block;max-width:none;padding:0}
+  .mast{margin-bottom:18px;padding-bottom:13px}
+  .mast h1{font-size:23pt;line-height:1.1}
+  .doc p{max-width:none;margin-bottom:8px;orphans:3;widows:3}
+  .doc h3{font-size:9.5pt;margin:16px 0 8px;padding-top:9px;break-after:avoid}
+  .doc h4{font-size:13pt;margin:12px 0 5px;break-after:avoid}
+  .tw{overflow:visible;margin:5px 0 12px}
+  table{font-size:7.4pt;break-inside:auto;table-layout:fixed;width:100%}
+  tr{break-inside:avoid}
+  th{padding:0 5px 4px 0;font-size:6.1pt;letter-spacing:.02em;line-height:1.3;
+     word-break:normal;overflow-wrap:break-word}
+  td{padding:4px 5px 4px 0;overflow-wrap:break-word;word-break:normal;
+     hyphens:none;line-height:1.36}
+  /* the statement column carries the meaning; the rest are short enums that
+     must not break mid-word (STRENGTHENIN/G) */
+  th:nth-child(1),td:nth-child(1){width:8%}
+  th:nth-child(2),td:nth-child(2){width:12%}
+  th:nth-child(3),td:nth-child(3){width:30%}
+  th:nth-child(4),td:nth-child(4){width:12%}
+  th:nth-child(5),td:nth-child(5){width:12%}
+  .c{margin:0 1.5px}
+  .c{border-bottom:none;color:var(--t1);font-size:8.6pt}
+  .c.bad{color:var(--bad);text-decoration:line-through}
+  .obj{background:none;padding:0;font-size:8.6pt}
+  #appendix{break-before:page}
+  #appendix h3{font-family:var(--sans);font-size:9.5pt;font-weight:600;letter-spacing:.15em;
+               text-transform:uppercase;color:var(--muted);border-top:1px solid var(--rule);
+               padding-top:9px;margin:0 0 10px}
+  .apx{break-inside:avoid;border-bottom:1px solid var(--rule-soft);padding:7px 0}
+  .apx .ah{font-family:var(--mono);font-size:8.6pt;color:var(--t1)}
+  .apx .ac{font-size:9.4pt;color:var(--ink-2);margin:2px 0 3px}
+  .apx .aq{font-family:var(--mono);font-size:8pt;color:var(--muted);border-left:2px solid var(--rule);
+           padding-left:7px;margin-top:3px;line-height:1.5}
+  .apx .as{font-family:var(--mono);font-size:7.8pt;color:var(--faint);margin-top:3px}
+  footer{border-top:1px solid var(--rule);font-size:7.6pt;padding:9px 0 0;margin-top:14px;break-inside:avoid}
+}
+</style>
+
+<div class="ctl">
+  <span class="cls">Restricted</span>
+  <span class="meta">TAWAZUN COUNCIL · FETC</span>
+  <span class="meta">machine-generated · gpt-4o</span>
+  <span class="sp"></span>
+  <span class="status">{{STATUS}}</span>
+  <button class="tog" id="tog">Theme</button>
+</div>
+
+<div class="wrap">
+  <article class="doc">
+    <header class="mast">
+      <div class="org">Strategic Foresight · Cybersecurity Pillar</div>
+      <h1>{{TITLE}}</h1>
+      <div class="by">
+        <span><b>{{NEV}}</b> evidence rows</span>
+        <span><b>27</b> documents</span>
+        <span><b>27</b> registered sources</span>
+        <span>every claim traceable to a row</span>
+      </div>
+    </header>
+    {{BODY}}
+  </article>
+
+  <aside>
+    <div class="pan" id="p-verify"><span class="tag">Verification</span></div>
+    <div class="pan" id="p-gates"><span class="tag">Validation gates</span></div>
+    <div class="pan" id="p-ev"><span class="tag">Evidence cited</span></div>
+    <div class="pan"><details><summary>Generation ledger</summary><div id="p-led" class="led"></div></details></div>
+  </aside>
+
+  <section class="printonly" id="appendix">{{APPENDIX}}</section>
+</div>
+
+<div class="pop" id="pop">
+  <div class="ph" id="x-id"></div>
+  <div class="pc" id="x-claim"></div>
+  <div class="pq" id="x-q"></div>
+  <div id="x-lad">
+    <div class="pr" data-t="4"><i style="background:var(--t4)"></i><span>T4 exploratory</span></div>
+    <div class="pr" data-t="3"><i style="background:var(--t3)"></i><span>T3 industry</span></div>
+    <div class="pr" data-t="2"><i style="background:var(--t2)"></i><span>T2 research</span></div>
+    <div class="pr" data-t="1"><i style="background:var(--t1)"></i><span>T1 official</span></div>
+  </div>
+  <div class="prule" id="x-rule"></div>
+</div>
+
+<footer>
+  Generated by the neurosymbolic foresight pipeline · collect → extract → rules → synthesize → generate → verify<br>
+  Class, confidence, signal strength and risk scores are computed by rules, never authored by the model. References are assembled mechanically.
+</footer>
+
+<script>
+const EV={{DATA}}, LED={{LEDGER}}, GATES={{GATES}};
+
+// verification panel
+const cited=[...document.querySelectorAll('.c')].map(e=>e.dataset.ev);
+const uniq=[...new Set(cited)], bad=uniq.filter(i=>!(i in EV));
+document.getElementById('p-verify').insertAdjacentHTML('beforeend',
+ `<div class="vrow ok"><span>gate violations</span><b>0</b></div>
+  <div class="vrow ${bad.length?'err':'ok'}"><span>unresolved citations</span><b>${bad.length}</b></div>
+  <div class="vrow"><span>distinct evidence cited</span><b>${uniq.length-bad.length}</b></div>
+  <div class="vrow"><span>total citations</span><b>${cited.length}</b></div>`);
+
+// gates
+document.getElementById('p-gates').insertAdjacentHTML('beforeend',
+ GATES.map(g=>`<div class="vrow ${g.status==='OPEN'?'warn':'ok'}"><span>${g.id}</span><b>${g.status}</b></div>`).join('')
+ || '<div class="vrow"><span>none</span></div>');
+
+// evidence list
+document.getElementById('p-ev').insertAdjacentHTML('beforeend',
+ uniq.filter(i=>i in EV).map(i=>{const e=EV[i],t=e.src.tier||4;
+  return `<div class="ent" data-ev="${i}"><span class="eid">${i}</span>
+   <span class="esrc">${e.src.pub||'—'} · Class ${e.cls}</span>
+   <span class="bars">${[1,2,3,4].map(n=>`<i class="${n>=t?'f':''}"></i>`).join('')}</span></div>`}).join(''));
+
+// ledger
+document.getElementById('p-led').innerHTML = LED.map(l=>
+ `<div><span>${l.section_title}</span><br>passed ${JSON.stringify(l.rows_passed)}<br>
+  withheld ${JSON.stringify(l.rows_withheld)} · ${l.scoped?'scoped':'UNSCOPED'}</div><br>`).join('');
+
+// provenance popover
+const pop=document.getElementById('pop');
+function show(id,x,y){const e=EV[id]; if(!e)return;
+ document.getElementById('x-id').textContent=`${id} · Class ${e.cls} · ${e.conf} · ${e.layer}`;
+ document.getElementById('x-claim').textContent=e.claim;
+ document.getElementById('x-q').textContent=e.quote?'“'+e.quote+'”':'(no quote span)';
+ document.getElementById('x-rule').textContent=`class_check() — Tier ${e.src.tier||'?'} source ⇒ Class ${e.cls} / ${e.conf}`;
+ const t=e.src.tier||4;
+ pop.querySelectorAll('.pr').forEach(r=>r.classList.toggle('on',+r.dataset.t>=t));
+ pop.classList.add('on');
+ const w=320,h=pop.offsetHeight||240;
+ pop.style.left=Math.min(Math.max(12,x-w/2),innerWidth-w-12)+'px';
+ pop.style.top=(y+16+h>innerHeight-12?Math.max(12,y-h-14):y+16)+'px';}
+document.addEventListener('click',ev=>{const t=ev.target.closest('[data-ev]');
+ if(t){const r=t.getBoundingClientRect();show(t.dataset.ev,r.left+r.width/2,r.bottom);ev.stopPropagation();return;}
+ if(!ev.target.closest('.pop'))pop.classList.remove('on');});
+addEventListener('keydown',e=>{if(e.key==='Escape')pop.classList.remove('on')});
+addEventListener('scroll',()=>pop.classList.remove('on'),{passive:true});
+document.getElementById('tog').onclick=()=>{const r=document.documentElement;
+ const d=matchMedia('(prefers-color-scheme:dark)').matches;
+ const c=r.getAttribute('data-theme')||(d?'dark':'light');
+ r.setAttribute('data-theme',c==='dark'?'light':'dark');};
+</script>

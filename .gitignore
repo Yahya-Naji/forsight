@@ -1,0 +1,36 @@
+# ── secrets ────────────────────────────────────────────────────────────
+.env
+.env.local
+web/.env.local
+*.pem
+
+# ── python ─────────────────────────────────────────────────────────────
+.venv/
+__pycache__/
+*.py[cod]
+
+# ── node / next ────────────────────────────────────────────────────────
+node_modules/
+web/.next/
+web/tsconfig.tsbuildinfo
+
+# ── generated output ───────────────────────────────────────────────────
+# Reports and PDFs are build artefacts; the graph in Postgres is the source
+# of truth and `make pdf` regenerates them.
+out/
+
+# ── client material ────────────────────────────────────────────────────
+# The Tawazun/FETC source documents are classified Restricted and must not be
+# published. They stay local; the pipeline reads them from disk when needed.
+docs/source/
+docs/poc-progress-report.docx
+
+# ── local tooling ──────────────────────────────────────────────────────
+.claude/
+
+# ── os / editor ────────────────────────────────────────────────────────
+.DS_Store
+Thumbs.db
+*.swp
+.idea/
+.vscode/
