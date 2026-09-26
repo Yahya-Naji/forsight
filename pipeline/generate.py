@@ -38,8 +38,9 @@ CITATION RULES
 - EVIDENCE is cited in SQUARE BRACKETS, always: [EV-004], [EV-NVD-001].
   Never (EV-004), never a bare EV-004. The brackets are what the reference
   builder and the citation audit read.
-- Findings, risks, signals and trends are referenced by BARE id — F-CS-01,
-  R-CS-02, SIG-CS-03 — with no brackets.
+- Findings, risks, signals, trends and forecasts are referenced by BARE id —
+  F-CS-01, R-CS-02, SIG-CS-03, FC-CS-01 — with no brackets. Every sentence
+  about a forecast names its FC- id.
 - Where the data below contains no evidence rows, cite findings and risks only.
   Do not write [EV-...] for an evidence row that was not supplied.
 - A sentence that recommends, instructs, or proposes an ACTION must carry NO
@@ -49,6 +50,13 @@ CITATION RULES
   decorate, and never cite an id absent from the data below.
 - Refer to signals, risks and findings by bare id (SIG-CS-01, R-CS-01) — brackets
   are for evidence only.
+
+FORECAST RULES
+- Plausibility bands (Likely / Possible / Uncertain / Speculative) are computed
+  from corroboration breadth and horizon distance. Report the band in words.
+  Never convert one into a percentage, odds or "high probability".
+- A Speculative forecast is a watch item. Do not write it as a projection.
+- Every forecast is stated with its falsifier in the same paragraph.
 
 EVIDENCE CLASS RULES
 - Class A and B may be stated as fact.
@@ -172,6 +180,11 @@ def fetch_inputs(sb, pillar, wanted, section_key):
         take("findings", sb.table("findings").select("*").eq("pillar", pillar).execute().data)
     if "risks" in wanted:
         take("risks", sb.table("risks").select("*").execute().data)
+    if "forecasts" in wanted:
+        take("forecasts", sb.table("forecasts").select(
+            "id,statement,horizon,env_layer,plausibility,confidence,"
+            "falsifier,assumptions,rationale,basis")
+            .eq("pillar", pillar).order("horizon").execute().data)
     if "indicators" in wanted:
         rows = sb.table("indicators").select("*").execute().data
         # An indicator with no threshold cannot be monitored; rendering "TBD"

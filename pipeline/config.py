@@ -37,8 +37,8 @@ def db():
 # /generate reflects what actually happened rather than an optimistic guess.
 #
 # Stage keys are the contract with web/app/generate/page.tsx:
-STAGES = ("collect", "gate1", "extract", "gate2",
-          "rules", "synthesize", "generate", "verify")
+STAGES = ("collect", "gate1", "extract", "gate2", "rules",
+          "synthesize", "forecast", "generate", "verify")
 
 
 def update_run(run_id, stage=None, status=None, counts=None,

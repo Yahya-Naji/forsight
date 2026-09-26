@@ -33,13 +33,16 @@ rules:              ## class, confidence, signal strength, gates
 synth:              ## evidence -> signals, findings, risks
 	$(PY) pipeline/synthesize.py --pillar $(PILLAR)
 
+forecast:           ## project forward: outlook with computed plausibility
+	$(PY) pipeline/forecast.py --pillar $(PILLAR) --replace
+
 generate:           ## draft the report from the graph
 	$(PY) pipeline/generate.py --pillar $(PILLAR) --title "$(TITLE)"
 
 verify:             ## audit a report: make verify REPORT=<uuid>
 	$(PY) pipeline/verify.py --report $(REPORT)
 
-report: extract gate3 rules synth generate   ## full chain for $(PILLAR)
+report: extract gate3 rules synth forecast generate   ## full chain for $(PILLAR)
 	@echo "Generated. Verify with: make verify REPORT=<uuid>"
 
 pdf:                ## render a report to HTML + PDF: make pdf REPORT=<uuid>

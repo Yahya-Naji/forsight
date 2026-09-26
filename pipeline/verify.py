@@ -46,13 +46,14 @@ CITATION = re.compile(r"\[(EV-[A-Z0-9-]+|SIG-[A-Z0-9-]+|R-[A-Z0-9-]+|F-[A-Z0-9-]
 # evidence row was supplied is what drove the model to invent ids.
 OBJECT_REF = re.compile(
     r"\b(EV-[A-Z0-9-]+|SIG-[A-Z]{2}-\d+|F-[A-Z]{2}-\d+|R-[A-Z]{2}-\d+"
-    r"|TR-[A-Z]{2}-\d+|CU-[A-Z]{2}-\d+)\b")
+    r"|TR-[A-Z]{2}-\d+|CU-[A-Z]{2}-\d+|FC-[A-Z]{2}-\d+)\b")
 
 # A sentence that states a fact but carries no citation. Headings, table rows,
 # list scaffolding and hedged/meta sentences are not assertions.
 SKIP_PREFIXES = ("#", "|", "---", ">", "*Status", "Customer Validation")
 
-HEDGES = ("may", "might", "could", "unproven", "single-source", "not confirmed",
+HEDGES = ("forecast", "speculative", "outlook", "projected", "projection",
+          "may", "might", "could", "unproven", "single-source", "not confirmed",
           "cannot be confirmed", "uncertain", "pending", "requires validation",
           "suggests", "indicates", "appears", "potential", "possible",
           "working view", "hypothesis", "not yet")
@@ -154,6 +155,8 @@ def load_graph(sb, pillar) -> Dict[str, dict]:
         graph[row["id"]] = dict(row, kind="trend")
     for row in sb.table("uncertainties").select("id,question").eq("pillar", pillar).execute().data:
         graph[row["id"]] = dict(row, kind="uncertainty")
+    for row in sb.table("forecasts").select("id,statement").eq("pillar", pillar).execute().data:
+        graph[row["id"]] = dict(row, kind="forecast")
     return graph
 
 
@@ -210,11 +213,14 @@ def check_class_discipline(sentences, graph) -> List[Violation]:
     return out
 
 
-def check_gates(sb, sentences) -> List[Violation]:
+def check_gates(sb, sentences, pillar=None) -> List[Violation]:
     """An OPEN gate is a prohibition, not a footnote. The guard is keyword-based
     and deliberately over-triggers: a false positive costs a human glance, a
     false negative ships an unsupported UAE claim."""
     gates = sb.table("validation_gates").select("*").eq("status", "OPEN").execute().data
+    if pillar:
+        gates = [g for g in gates if pillar in (g.get("blocks") or "")
+                 or g["id"].startswith("VG-%s-" % pillar[:2])]
     if not gates:
         return []
 
@@ -338,7 +344,7 @@ def main():
     violations += check_citations(sentences, graph)
     violations += check_unsourced(sentences)
     violations += check_class_discipline(sentences, graph)
-    violations += check_gates(sb, sentences)
+    violations += check_gates(sb, sentences, pillar)
 
     n_checked = 0
     if not a.skip_entailment:

@@ -14,6 +14,7 @@ const STAGES = [
   ["gate2", "Gate 2 · quote check", "claims must be entailed by their verbatim quote"],
   ["rules", "Rules & gates", "class, confidence, signal strength, UAE guard"],
   ["synthesize", "Synthesize", "signals, findings and risks admitted by rule"],
+  ["forecast", "Forecast", "outlook with computed plausibility and a falsifier"],
   ["generate", "Generate", "section-scoped inputs, per-claim citations"],
   ["verify", "Verify", "citations resolve · gates honoured · entailment"],
 ] as const;
