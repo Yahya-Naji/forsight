@@ -52,8 +52,11 @@ pdf:                ## render a report to HTML + PDF: make pdf REPORT=<uuid>
 	  --print-to-pdf="$(PWD)/out/report.pdf" "file://$(PWD)/out/report.html"
 	@echo "out/report.pdf"
 
-evaluate:           ## score the output against the human Counter-UAS V1.0
-	$(PY) pipeline/evaluate.py --pillar $(PILLAR) --json out/scorecard.json
+BENCHMARK ?= docs/source/counter-uas-report-v1.0.docx
+
+evaluate:           ## score against a benchmark: make evaluate BENCHMARK=path.pdf
+	$(PY) pipeline/evaluate.py --pillar $(PILLAR) --benchmark "$(BENCHMARK)" \
+	  --json out/scorecard.json
 
 web:                ## run the console locally
 	cd web && npm run dev

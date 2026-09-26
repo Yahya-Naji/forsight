@@ -34,6 +34,20 @@ source_registry ────┼─ LANE B  question-driven search (GDELT + site 
 | Sections failing verification are retried, then **withheld** | `generate.py` + `verify.py` |
 | References are assembled mechanically, deduped by document | `generate.py` |
 | Rejected proposals become research gaps, not silence | `synthesize.py`, `collect.py` |
+| A finding must assert something that could be false | `synthesize.py` substance test |
+| Forecast plausibility is computed, never proposed | `forecast.py` |
+
+## Evaluation
+
+`evaluate.py` scores the graph against a benchmark document in **.docx, .pdf,
+.txt, .md or .html**. Documents carrying an id scheme (SIG-04, F-02, R7) are
+parsed by pattern; anything else has its registers extracted by the model in
+chunks and cached, so a 200-page report is only read once.
+
+Recall is reported **in scope as well as overall** — the benchmark may cover
+pillars the graph does not, and a flat number would be near zero by
+construction. Citation entailment on the benchmark is reported as *not
+measurable* rather than estimated: its sources are not in our graph.
 
 ## Quick start
 
@@ -45,6 +59,10 @@ make report PILLAR=CYBERSECURITY
 make verify REPORT=<uuid>
 make pdf    REPORT=<uuid>   # → out/report.pdf
 make web                    # console on :3000
+
+# score the output against any benchmark document
+make evaluate BENCHMARK=docs/source/counter-uas-report-v1.0.docx
+make evaluate BENCHMARK=~/Downloads/competitor-outlook.pdf
 ```
 
 `make help` lists every target.

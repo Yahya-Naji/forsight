@@ -22,7 +22,9 @@ What cannot be measured:
 from __future__ import annotations
 
 import argparse
+import hashlib
 import json
+import os
 import re
 import zipfile
 from typing import Dict, List, Optional
@@ -39,6 +41,46 @@ BENCHMARK = "docs/source/counter-uas-report-v1.0.docx"
 # --------------------------------------------------------------------------
 # benchmark extraction
 # --------------------------------------------------------------------------
+SUPPORTED = (".docx", ".pdf", ".txt", ".md", ".html", ".htm")
+CACHE_DIR = "out/benchmarks"
+
+
+def read_document(path: str) -> List[str]:
+    """Paragraphs from a benchmark in whatever format it arrives as.
+
+    A comparison is only useful if you can point it at the document you
+    actually have — a client's PDF, a competitor's report, a Word draft.
+    """
+    ext = os.path.splitext(path)[1].lower()
+    if ext == ".docx":
+        return docx_text(path)
+    if ext == ".pdf":
+        return pdf_text(path)
+    if ext in (".html", ".htm"):
+        from bs4 import BeautifulSoup
+        soup = BeautifulSoup(open(path, encoding="utf-8", errors="ignore").read(), "html.parser")
+        for t in soup(["script", "style"]):
+            t.decompose()
+        return [l.strip() for l in soup.get_text("\n").splitlines() if l.strip()]
+    if ext in (".txt", ".md"):
+        return [l.strip() for l in open(path, encoding="utf-8", errors="ignore") if l.strip()]
+    raise SystemExit("unsupported benchmark format %r (expected one of %s)"
+                     % (ext, ", ".join(SUPPORTED)))
+
+
+def pdf_text(path: str) -> List[str]:
+    from pypdf import PdfReader
+    out = []
+    for page in PdfReader(path).pages:
+        try:
+            for line in (page.extract_text() or "").splitlines():
+                if line.strip():
+                    out.append(line.strip())
+        except Exception:
+            continue
+    return out
+
+
 def docx_text(path: str) -> List[str]:
     x = zipfile.ZipFile(path).read("word/document.xml").decode("utf8", "ignore")
     out = []
@@ -50,8 +92,88 @@ def docx_text(path: str) -> List[str]:
     return out
 
 
-def parse_benchmark(path: str) -> Dict[str, List[dict]]:
-    lines = docx_text(path)
+class BenchItem(BaseModel):
+    id: str = Field(max_length=24)
+    text: str = Field(max_length=300)
+
+
+class BenchRegisters(BaseModel):
+    signals: List[BenchItem] = Field(default_factory=list)
+    findings: List[BenchItem] = Field(default_factory=list)
+    risks: List[BenchItem] = Field(default_factory=list)
+    uncertainties: List[BenchItem] = Field(default_factory=list)
+
+
+EXTRACT_PROMPT = """Read this excerpt of a strategic-foresight document and pull
+out its analytical registers.
+
+  signals       — observed changes the document treats as directional
+  findings      — analytical conclusions it draws
+  risks         — what it says could go wrong
+  uncertainties — what it says is genuinely unresolved
+
+Rules:
+- Use the document's own ids where it has them (SIG-04, F-02, R7, CU-01). Where
+  it has none, mint one: S1, F1, R1, U1.
+- One entry per distinct item; do not split a claim across entries.
+- Quote or tightly paraphrase. Do not add anything the document does not say.
+- An empty register is a valid answer. Do not invent items to fill it.
+
+EXCERPT:
+{chunk}
+"""
+
+
+def _llm_registers(lines: List[str]) -> Dict[str, List[dict]]:
+    """Extract registers from a document with no recognisable id scheme.
+
+    Chunked, because a full foresight report exceeds the context window and
+    silently truncating it would understate the benchmark — making our recall
+    look better than it is.
+    """
+    text = "\n".join(lines)
+    size, out = 40000, {"signals": [], "findings": [], "risks": [], "uncertainties": []}
+    chunks = [text[i:i + size] for i in range(0, len(text), size)]
+    print("  no id scheme recognised — extracting with the model (%d chunk(s))" % len(chunks))
+    for n, chunk in enumerate(chunks, 1):
+        try:
+            got = llm.structured(EXTRACT_PROMPT.format(chunk=chunk), BenchRegisters,
+                                 fast=True, effort="medium", max_output_tokens=16000)
+        except Exception as exc:
+            print("    chunk %d failed: %s" % (n, exc))
+            continue
+        for key in out:
+            for item in getattr(got, key):
+                out[key].append({"id": "%s.%s" % (n, item.id), "text": item.text})
+        print("    chunk %d/%d → %s" % (n, len(chunks),
+              " ".join("%s %d" % (k, len(getattr(got, k))) for k in out)))
+    return out
+
+
+def parse_benchmark(path: str, use_cache: bool = True) -> Dict[str, List[dict]]:
+    """Registers from any supported document. Cached — model extraction over a
+    200-page report is not something to re-pay for on every evaluation."""
+    lines = read_document(path)
+    digest = hashlib.sha256(("\n".join(lines)).encode()).hexdigest()[:16]
+    cache = os.path.join(CACHE_DIR, digest + ".json")
+    if use_cache and os.path.exists(cache):
+        print("  registers from cache (%s)" % cache)
+        return json.load(open(cache))
+
+    reg = _pattern_registers(lines)
+    found = sum(len(v) for v in reg.values())
+    if found < 4:
+        reg = _llm_registers(lines)
+    else:
+        print("  registers recovered by id pattern (%d items)" % found)
+
+    os.makedirs(CACHE_DIR, exist_ok=True)
+    json.dump(reg, open(cache, "w", encoding="utf-8"), indent=1)
+    return reg
+
+
+def _pattern_registers(lines: List[str]) -> Dict[str, List[dict]]:
+    """Documents that already carry an id scheme (SIG-04, F-02, R7, CU-01)."""
     joined = "\n".join(lines)
     reg = {"signals": [], "findings": [], "risks": [], "uncertainties": []}
 
@@ -76,7 +198,10 @@ def parse_benchmark(path: str) -> Dict[str, List[dict]]:
 # --------------------------------------------------------------------------
 # deterministic text metrics — identical code on both documents
 # --------------------------------------------------------------------------
-NUM_CITE = re.compile(r"\[\d+\]")
+# Numeric footnotes [12] and object references (EV-001, SIG-CS-04) both count:
+# scoring a document at zero because it cites by id rather than by number would
+# be an artefact of our own conventions.
+NUM_CITE = re.compile(r"\[\d+\]|\b(?:EV|SIG|F|R|TR|CU|FC)-[A-Z0-9-]+\b")
 
 
 def text_metrics(sentences: List[str], citation_re) -> dict:
@@ -181,12 +306,15 @@ def main():
     ap = argparse.ArgumentParser(description="Score the agent against the human report")
     ap.add_argument("--pillar", required=True)
     ap.add_argument("--report", help="reports.id to score; default = latest for the pillar")
-    ap.add_argument("--benchmark", default=BENCHMARK)
+    ap.add_argument("--benchmark", default=BENCHMARK,
+                    help="document to score against: .docx .pdf .txt .md .html")
+    ap.add_argument("--no-cache", action="store_true",
+                    help="re-extract the benchmark registers instead of reusing the cache")
     ap.add_argument("--json", help="write the scorecard to this path")
     a = ap.parse_args()
     sb = db()
 
-    bench = parse_benchmark(a.benchmark)
+    bench = parse_benchmark(a.benchmark, use_cache=not a.no_cache)
     ours = our_register(sb, a.pillar)
     print("benchmark : %s" % a.benchmark)
     print("  registers: " + " · ".join("%s %d" % (k, len(v)) for k, v in bench.items()))
@@ -203,7 +331,7 @@ def main():
 
     # ---- deterministic, same code both sides -----------------------------
     ours_m = text_metrics(verify.sentences_of(report["body_md"] or ""), verify.OBJECT_REF)
-    bench_sents = [l for l in docx_text(a.benchmark) if len(l) > 40 and not l.startswith("•")]
+    bench_sents = [l for l in read_document(a.benchmark) if len(l) > 40 and not l.startswith("•")]
     bench_m = text_metrics(bench_sents, NUM_CITE)
 
     # ---- semantic recall, per register -----------------------------------
@@ -229,8 +357,11 @@ def main():
     novel = {k: [o["id"] for o in v if o["id"] not in matched_ours] for k, v in ours.items()}
 
     print()
+    bench_name = os.path.basename(a.benchmark)
+    if len(bench_name) > 18:
+        bench_name = bench_name[:15] + "…"
     print("═" * 74)
-    print("  METRIC                        THIS SYSTEM        HUMAN V1.0")
+    print("  METRIC                        THIS SYSTEM        %s" % bench_name)
     print("═" * 74)
     print("  Unsourced assertion rate      %-18s %s" % (ours_m["unsourced_rate"], bench_m["unsourced_rate"]))
     print("  Unsourced assertions          %-18d %d" % (ours_m["unsourced"], bench_m["unsourced"]))
@@ -238,6 +369,8 @@ def main():
     print("  Sentences analysed            %-18d %d" % (ours_m["sentences"], bench_m["sentences"]))
     print("  Chain completeness            %-18s n/a (not machine-readable)" % ("%.0f%%" % (chain["rate"] * 100)))
     print("  Citation entailment           see verify.py       not measurable — sources absent")
+    if ours_m["sentences"] < 20 or bench_m["sentences"] < 20:
+        print("  ! one document is very short; treat these rates as indicative")
     print("═" * 74)
     print("  Novel items (not in benchmark): " +
           " · ".join("%s %d" % (k, len(v)) for k, v in novel.items()))
