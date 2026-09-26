@@ -20,6 +20,7 @@ Usage: python synthesize.py --pillar ELECTRONIC_WARFARE
 from __future__ import annotations
 
 import argparse
+import re
 from collections import defaultdict
 from typing import List, Optional
 
@@ -55,19 +56,63 @@ class SignalProposal(BaseModel):
 class TrendProposal(BaseModel):
     name: str = Field(min_length=5, max_length=120)
     statement: str = Field(min_length=20, max_length=600)
-    signal_statements: List[str] = Field(min_length=1)
+    signal_refs: List[str] = Field(min_length=1,
+        description="ids (SIG-CS-04) or exact statements of supporting signals")
     direction: str = "UNCERTAIN"
+
+
+# A finding must assert something that could turn out to be false. The
+# benchmark's findings all discriminate — X rather than Y, X causes Y, X is
+# actually Z. Ours were restating topics: "enhanced cybersecurity measures are
+# critical" is true with the evidence deleted, so it is not a finding.
+BOOSTER_PLATITUDE = re.compile(
+    r"\b(is|are|remains?|becomes?|be)\s+(increasingly\s+|a\s+|an\s+)?"
+    r"(critical|crucial|essential|important|vital|pivotal|key|necessary|"
+    r"paramount|priority|imperative)\b", re.I)
+VAGUE_IMPERATIVE = re.compile(
+    r"\b(must|should)\s+(prioriti[sz]e|enhance|improve|strengthen|adopt|embrace|"
+    r"focus on|invest in|consider)\b", re.I)
+
+# Markers of a claim that discriminates between possibilities.
+DISCRIMINATING = re.compile(
+    r"\b(more|less|rather than|instead of|not merely|not only|beyond|outpaces?|"
+    r"faster than|slower than|outstrips?|exceeds?|"                  # comparative
+    r"because|therefore|so that|drives?|causes?|creates?|compresses?|reduces?|"
+    r"enables?|weakens?|undermines?|erodes?|shifts?|displaces?|"     # causal
+    r"in its own right|is actually|amounts? to|means? that|"         # reframing
+    r"becom\w+|determinant|enabler|bottleneck|constraint|prerequisite|"
+    r"precondition|centre of gravity|center of gravity|"             # reclassifying
+    r"cannot|will not|no longer|ceases? to|fails? to|"               # negation
+    r"insufficient|inadequate|not enough|leaves? \w+ exposed|"       # sufficiency
+    r"only)\b"                                                       # limiting
+    r"|\bnot\s+(\w+\s+){0,4}alone\b"                              # "…not X alone"
+    r"|\b(must|should)\s+be\s+(?!.*\b(critical|essential|important|priority)\b)",
+    re.I)
+
+
+def _is_platitude(text: str) -> tuple:
+    """Return (rejected, reason). Deterministic, so it cannot be argued with."""
+    if BOOSTER_PLATITUDE.search(text):
+        return True, "asserts that something is important rather than what is true"
+    if VAGUE_IMPERATIVE.search(text):
+        return True, "is a generic recommendation, not an analytical conclusion"
+    if not DISCRIMINATING.search(text):
+        return True, ("makes no discriminating claim — it does not say X rather "
+                      "than Y, X causes Y, or X is actually Z")
+    return False, ""
 
 
 class FindingProposal(BaseModel):
     statement: str = Field(min_length=20, max_length=600)
-    signal_statements: List[str] = Field(min_length=1)
+    signal_refs: List[str] = Field(min_length=1,
+        description="ids (SIG-CS-04) or exact statements of supporting signals")
     topic_ids: List[str] = Field(default_factory=list)
 
 
 class RiskProposal(BaseModel):
     statement: str = Field(min_length=20, max_length=400)
-    finding_statements: List[str] = Field(min_length=1)
+    finding_refs: List[str] = Field(min_length=1,
+        description="ids (F-CS-02) or exact statements of supporting findings")
     response: Optional[str] = None
     # NOTE: no likelihood/impact — computed below from the evidence base.
 
@@ -96,7 +141,18 @@ Your job is to GROUP, not to assert. Specifically:
   least {min_ev} DIFFERENT evidence ids from the register. A claim supported by
   one source is not a signal.
 - trends: the longer-run direction several signals point in.
-- findings: what follows analytically, each traceable to named signals.
+  Reference signals by their id (SIG-CS-04) wherever one already exists.
+- findings: what follows analytically. A finding must be a claim that COULD BE
+  FALSE. Test it: if the sentence stays true with all the evidence deleted, it
+  is not a finding.
+    GOOD  "Adaptation speed is becoming a readiness determinant."
+    GOOD  "Cyber assurance must be a lifecycle function, not an acceptance gate."
+    GOOD  "Regional intrusion-set density outpaces the UAE's published
+           detection coverage."
+    BAD   "Enhanced cybersecurity measures are critical."      (true regardless)
+    BAD   "Organisations must prioritise robust security."     (a platitude)
+  Every finding must discriminate: X rather than Y, X causes Y, or X is actually
+  Z. Findings that merely name a topic are rejected automatically.
 - risks: what could go wrong for UAE defence readiness, traceable to findings.
 - uncertainties: high-impact things the evidence genuinely does NOT settle.
 
@@ -112,6 +168,10 @@ Hard rules:
 
 EVIDENCE REGISTER ({n} rows):
 {register}
+
+SIGNALS ALREADY IN THE GRAPH — reference these by id when a finding rests on
+one, rather than restating them as new signals:
+{existing}
 """
 
 
@@ -128,11 +188,16 @@ def _format_register(rows):
         for r in rows)
 
 
-def propose(pillar, evidence_rows) -> Synthesis:
+def propose(sb, pillar, evidence_rows) -> Synthesis:
     """NEURAL step. Returns validated proposals; nothing is trusted yet."""
+    existing = "\n".join(
+        "  %s [%s] %s" % (r["id"], r["strength"], r["statement"][:150])
+        for r in (sb.table("signals").select("id,statement,strength")
+                  .eq("pillar", pillar).order("id").execute().data)) or "  (none yet)"
     prompt = PROMPT.format(
         pillar=pillar, min_ev=MIN_EVIDENCE_PER_SIGNAL,
-        n=len(evidence_rows), register=_format_register(evidence_rows))
+        n=len(evidence_rows), register=_format_register(evidence_rows),
+        existing=existing)
     # Grouping evidence is the analytical step — strong deployment, high effort.
     return llm.structured(prompt, Synthesis, effort="high", max_output_tokens=16000)
 
@@ -193,10 +258,28 @@ def admit_signals(sb, pillar, proposals, evidence_rows):
     return admitted
 
 
+def _all_signals(sb, pillar, signal_map):
+    """Every signal in the pillar, addressable by id OR by statement text.
+
+    The model references signals however it saw them in the prompt; matching on
+    one form only silently discards good findings.
+    """
+    lookup = dict(signal_map)
+    for row in sb.table("signals").select("id,statement").eq("pillar", pillar).execute().data:
+        lookup[row["id"]] = row["id"]
+        lookup[row["statement"]] = row["id"]
+        lookup[row["statement"].strip().rstrip(".")] = row["id"]
+    return lookup
+
+
 def admit_trends(sb, pillar, proposals, signal_map):
     code = PILLAR_CODE[pillar]
+    lookup = _all_signals(sb, pillar, signal_map)
     for prop in proposals:
-        linked = [signal_map[s] for s in prop.signal_statements if s in signal_map]
+        linked = list(dict.fromkeys(
+            lookup.get(s) or lookup.get(s.strip().rstrip("."))
+            for s in prop.signal_refs
+            if lookup.get(s) or lookup.get(s.strip().rstrip("."))))
         if len(linked) < MIN_SIGNALS_PER_TREND:
             _gap(sb, pillar, "Proposed trend had no admitted signal behind it: %s"
                  % prop.name, "trend_admission")
@@ -217,12 +300,22 @@ def admit_trends(sb, pillar, proposals, signal_map):
 
 def admit_findings(sb, pillar, proposals, signal_map):
     code = PILLAR_CODE[pillar]
+    lookup = _all_signals(sb, pillar, signal_map)
     admitted = {}
     for prop in proposals:
-        linked = [signal_map[s] for s in prop.signal_statements if s in signal_map]
+        linked = list(dict.fromkeys(
+            lookup.get(s) or lookup.get(s.strip().rstrip("."))
+            for s in prop.signal_refs
+            if lookup.get(s) or lookup.get(s.strip().rstrip("."))))
         if len(linked) < MIN_SIGNALS_PER_FINDING:
             _gap(sb, pillar, "Proposed finding had no admitted signal behind it: %s"
                  % prop.statement, "finding_admission")
+            continue
+        rejected, why = _is_platitude(prop.statement)
+        if rejected:
+            _gap(sb, pillar, "Finding rejected — %s: %s" % (why, prop.statement),
+                 "finding_substance")
+            print("  drop (%s)\n       %s" % (why[:52], prop.statement[:88]))
             continue
         f_id = _next_id(sb, "findings", "F-%s-" % code)
         sb.table("findings").insert(
@@ -266,8 +359,14 @@ def _score_risk(sb, finding_ids, signal_ids, evidence_rows):
 
 def admit_risks(sb, pillar, proposals, finding_map, evidence_rows):
     code = PILLAR_CODE[pillar]
+    lookup = dict(finding_map)
+    for row in sb.table("findings").select("id,statement").eq("pillar", pillar).execute().data:
+        sigs = [l["from_id"] for l in sb.table("links").select("from_id")
+                .eq("to_id", row["id"]).eq("from_type", "signal").execute().data]
+        lookup[row["id"]] = (row["id"], sigs)
+        lookup[row["statement"]] = (row["id"], sigs)
     for prop in proposals:
-        linked = [finding_map[s] for s in prop.finding_statements if s in finding_map]
+        linked = [lookup[s] for s in prop.finding_refs if s in lookup]
         if len(linked) < MIN_FINDINGS_PER_RISK:
             _gap(sb, pillar, "Proposed risk had no admitted finding behind it: %s"
                  % prop.statement, "risk_admission")
@@ -306,6 +405,8 @@ def main():
     ap = argparse.ArgumentParser(description="Evidence -> signals/trends/findings/risks")
     ap.add_argument("--run-id", help="pipeline_runs row to report progress into")
     ap.add_argument("--pillar", required=True, choices=list(PILLAR_CODE))
+    ap.add_argument("--replace", action="store_true",
+                    help="clear this pillar's signals/trends/findings/risks first")
     a = ap.parse_args()
     config.update_run(getattr(a, "run_id", None), stage="synthesize", status="RUNNING")
     sb = db()
@@ -317,7 +418,7 @@ def main():
         return
     print("Synthesising %s from %d evidence rows\n" % (a.pillar, len(evidence_rows)))
 
-    proposed = propose(a.pillar, evidence_rows)
+    proposed = propose(sb, a.pillar, evidence_rows)
     print("proposed: %d signals, %d trends, %d findings, %d risks, %d uncertainties\n"
           % (len(proposed.signals), len(proposed.trends), len(proposed.findings),
              len(proposed.risks), len(proposed.uncertainties)))
