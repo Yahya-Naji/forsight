@@ -6,7 +6,7 @@ PILLAR  ?= CYBERSECURITY
 TITLE   ?= $(PILLAR) baseline
 REPORT  ?=
 
-.PHONY: help setup migrate collect extract gate3 rules synth generate verify report pdf web build clean
+.PHONY: help setup migrate collect extract gate3 rules synth forecast generate verify report pdf evaluate web build clean
 
 help:               ## list the available targets
 	@grep -E '^[a-z0-9-]+:.*?## ' $(MAKEFILE_LIST) | sed 's/:.*## /\t/' | expand -t22
@@ -51,6 +51,9 @@ pdf:                ## render a report to HTML + PDF: make pdf REPORT=<uuid>
 	  --disable-gpu --no-sandbox --virtual-time-budget=20000 --no-pdf-header-footer \
 	  --print-to-pdf="$(PWD)/out/report.pdf" "file://$(PWD)/out/report.html"
 	@echo "out/report.pdf"
+
+evaluate:           ## score the output against the human Counter-UAS V1.0
+	$(PY) pipeline/evaluate.py --pillar $(PILLAR) --json out/scorecard.json
 
 web:                ## run the console locally
 	cd web && npm run dev
