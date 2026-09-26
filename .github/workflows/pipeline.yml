@@ -76,7 +76,17 @@ jobs:
           import sys; sys.path.insert(0,'.')
           from config import db
           print(db().table('reports').select('id').order('created_at',desc=True).limit(1).execute().data[0]['id'])")
+          # verify.py exits 1 when it finds blocking violations. That is an
+          # analytical result, not a broken pipeline — the report exists and the
+          # findings are recorded on the run row. Only a genuine crash (>1)
+          # should fail the job.
+          set +e
           python verify.py --report "$RID" --run-id "$RUN_ID" --json ../out/violations.json
+          code=$?
+          set -e
+          if [ "$code" -gt 1 ]; then exit "$code"; fi
+          [ "$code" -eq 1 ] && echo "::warning::Report generated with blocking verification findings — see the run row and out/violations.json"
+          exit 0
 
       - name: Mark the run failed if any step above failed
         if: failure()

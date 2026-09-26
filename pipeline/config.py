@@ -77,6 +77,11 @@ def update_run(run_id, stage=None, status=None, counts=None,
         for key in ("started_at", "finished_at"):
             if patch.get(key) == "now()":
                 patch[key] = _dt.datetime.now(_dt.timezone.utc).isoformat()
-        sb.table("pipeline_runs").update(patch).eq("id", run_id).execute()
+        res = sb.table("pipeline_runs").update(patch).eq("id", run_id).execute()
+        if not (res.data or []):
+            # An UPDATE matching zero rows returns cleanly, so a wrong run id
+            # would otherwise be indistinguishable from a successful report.
+            print("  (run tracking: no pipeline_runs row with id %s — "
+                  "progress is NOT being recorded)" % run_id)
     except Exception as exc:                      # tracking is best-effort
         print("  (run tracking failed: %s)" % exc)
