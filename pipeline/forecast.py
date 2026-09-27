@@ -20,6 +20,7 @@ Usage: python forecast.py --pillar CYBERSECURITY
 from __future__ import annotations
 
 import argparse
+import re
 from typing import Dict, List, Optional
 
 from pydantic import BaseModel, Field
@@ -33,6 +34,15 @@ PILLAR_CODE = {"CYBERSECURITY": "CS", "AI": "AI",
                "ELECTRONIC_WARFARE": "EW", "PROCUREMENT": "PR"}
 
 HORIZONS = ("H0_3", "H3_5", "H5_10", "H7_PLUS")
+# Template slots the model left unfilled: [Year], <date>, TBD, XX%, {n}.
+# A bracketed object id is a citation, not an unfilled slot. Without the
+# exception a forecast that happened to name [EV-012] would be dropped for
+# looking like a template — and a silent drop is worse than the defect.
+PLACEHOLDER = re.compile(
+    r"(\[(?!(?:EV|SIG|F|R|FC|FIG|TR|CU)-)[^\]]{0,24}\]"
+    r"|<[^>]{0,24}>|\{[^}]{0,24}\}|\bTBD\b|\bN/?A\b"
+    r"|\bXX+\b|\bYYYY\b|\binsert\b)", re.I)
+
 MIN_SIGNALS_PER_FORECAST = 1
 
 
@@ -234,6 +244,15 @@ def admit(sb, pillar: str, proposals: List[ForecastProposal], uae_gate_open: boo
             if sig_lookup.get(s) or sig_lookup.get(s.strip().rstrip("."))))
         if len(sigs) < MIN_SIGNALS_PER_FORECAST:
             _gap(sb, pillar, "Forecast rejected — no admitted signal behind it: %s" % p.statement)
+            continue
+        if PLACEHOLDER.search(p.statement) or PLACEHOLDER.search(p.falsifier or ""):
+            # "By [Year], the adoption of advanced threat detection will..." was
+            # admitted, calibrated POSSIBLE and carried into a report. A forecast
+            # with an unfilled slot has no horizon to be judged against, and a
+            # bracketed placeholder in a leadership brief destroys the reader's
+            # trust in every number beside it.
+            _gap(sb, pillar, "Forecast rejected — unfilled placeholder in the statement: %s"
+                 % p.statement)
             continue
         if p.horizon not in HORIZONS:
             _gap(sb, pillar, "Forecast rejected — invalid horizon %r: %s" % (p.horizon, p.statement))

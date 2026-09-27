@@ -45,6 +45,13 @@ SOURCES = [
     ("SRC-T1-011", 1, "UK NCSC", "https://www.ncsc.gov.uk/api/1/services/v1/report-rss-feed.xml",
      "rss", [CY, AI], "National cyber authority reporting and threat assessments"),
 
+    ("SRC-T1-012", 1, "CISA (US)", "https://www.cisa.gov/cybersecurity-advisories/all.xml",
+     "rss", [CY], "US cyber defence agency advisories, KEV additions and joint guidance"),
+    ("SRC-T1-013", 1, "ENISA (EU)", "https://www.enisa.europa.eu/media/news-items/RSS",
+     "rss", [CY, AI], "EU cyber agency threat landscape and certification schemes"),
+    ("SRC-T1-014", 1, "NSA Cybersecurity (US)", "https://www.nsa.gov/Cybersecurity",
+     "search", [CY], "CNSA 2.0 quantum-resistant algorithm suite and NSS guidance"),
+
     # ---------------- TIER 2 — international / academic / strategic ------------
     ("SRC-T2-001", 2, "RAND Corporation", "https://www.rand.org",
      "search", [AI, PR, EW], "Methodology and capability analysis"),
@@ -103,6 +110,16 @@ DOMAIN_ALIASES = {
     "talosintelligence.com": "SRC-T3-001",
     "blog.talosintelligence.com": "SRC-T3-001",
     "gov.uk": "SRC-T1-006",
+    # A publisher missing from the registry does not merely go unlabelled: it
+    # falls back to the GDELT aggregator id and is scored Tier 4, so a CISA
+    # advisory was being classed as weakly as a news aggregator repost. Tier
+    # decides evidence class downstream, which makes an absent mapping a
+    # correctness bug rather than a cosmetic one.
+    "cisa.gov": "SRC-T1-012",
+    "enisa.europa.eu": "SRC-T1-013",
+    "nsa.gov": "SRC-T1-014",
+    "csrc.nist.gov": "SRC-T1-007",
+    "nvlpubs.nist.gov": "SRC-T1-007",
 }
 
 # Paywalled / subscription-pending — deliberately NOT seeded. See README.

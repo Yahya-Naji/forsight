@@ -39,14 +39,15 @@ import llm
 import config
 from config import db
 
-CITATION = re.compile(r"\[(EV-[A-Z0-9-]+|SIG-[A-Z0-9-]+|R-[A-Z0-9-]+|F-[A-Z0-9-]+)\]")
+CITATION = re.compile(
+    r"\[(EV-[A-Z0-9-]+|SIG-[A-Z0-9-]+|R-[A-Z0-9-]+|F-[A-Z0-9-]+|FIG-[A-Z0-9-]+)\]")
 
 # Sections that receive findings and risks rather than evidence cite them by
 # bare id (F-CS-01, R-CS-02). That is sourcing too — demanding [EV-xxx] where no
 # evidence row was supplied is what drove the model to invent ids.
 OBJECT_REF = re.compile(
     r"\b(EV-[A-Z0-9-]+|SIG-[A-Z]{2}-\d+|F-[A-Z]{2}-\d+|R-[A-Z]{2}-\d+"
-    r"|TR-[A-Z]{2}-\d+|CU-[A-Z]{2}-\d+|FC-[A-Z]{2}-\d+)\b")
+    r"|TR-[A-Z]{2}-\d+|CU-[A-Z]{2}-\d+|FC-[A-Z]{2}-\d+|FIG-\d+)\b")
 
 # A sentence that states a fact but carries no citation. Headings, table rows,
 # list scaffolding and hedged/meta sentences are not assertions.
@@ -105,13 +106,37 @@ META_PREDICATE = re.compile(
 # "If vulnerabilities prove incapable of contractual mitigation" states when to
 # act, not that anything has happened. Narrow by design — the opener must be the
 # first word, so a claim cannot hide behind a conditional clause mid-sentence.
+# A discourse marker in front of a conditional does not make it an assertion:
+# "However, if migration slips, the exposure falls on X" is still a conditional,
+# and it was being rejected for the comma.
+DISCOURSE = r"(?:however|conversely|moreover|furthermore|yet|but|thus|therefore|"\
+            r"equally|by contrast|on the other hand|that said)[,:]?\s+"
 CONDITIONAL_OPENER = re.compile(
-    r"^(if|should|unless|were\s+\w+\s+to|in the event|absent|"
+    r"^(?:" + DISCOURSE + r")?"
+    r"(if|should|unless|were\s+\w+\s+to|in the event|absent|"
     r"provided that|so long as)\b", re.I)
 
 
+# A falsifier states what would refute a forecast. Every forecast in this system
+# is required to carry one, so the report is required to state them — and a
+# statement of what would refute a claim asserts nothing about the present. The
+# labelled form ("Falsifier: ...") was already handled; this is the prose form
+# the model writes when the falsifier is folded into a paragraph.
+# The copula must follow immediately. Matching "the falsifier" alone exempted
+# "The falsifier was triggered and two UAE primes were breached last quarter" —
+# a sentence that names a falsifier and then asserts a breach.
+FALSIFIER_CLAUSE = re.compile(
+    r"^(the |its )?(falsifier|falsifying (observation|evidence)|refuting "
+    r"(observation|evidence)|disconfirming (observation|evidence))\s*"
+    r"(is|are|would be|:|\u2014|-)\s"
+    r"|^what would (refute|falsify|disconfirm)\b"
+    r"|\bwould (refute|falsify|disconfirm) (this|it|the forecast)\b", re.I)
+
+
 def is_condition(sentence: str) -> bool:
-    return bool(CONDITIONAL_OPENER.match(sentence.strip()))
+    stripped = sentence.strip()
+    return bool(CONDITIONAL_OPENER.match(stripped)
+                or FALSIFIER_CLAUSE.search(stripped))
 
 
 def is_meta_claim(sentence: str) -> bool:
@@ -158,6 +183,32 @@ IMPERATIVE_VERBS = (
     "segment", "isolate", "patch", "harden", "instrument", "log", "add",
     "apply", "set", "raise", "reduce", "limit", "cap", "phase", "retire",
     "replace", "migrate", "consolidate", "centralise", "centralize",
+    # Third round of the same failure: a section of well-formed recommendations
+    # was withheld for opening on "Finalize", "Investigate" and "Reassess". The
+    # list is curated rather than inferred because the alternative — guessing
+    # whether a capitalised word is a verb — risks exempting real claims, which
+    # is the failure that matters. So it is long, and `unmatched_openers` below
+    # makes the next gap visible instead of silent.
+    "finalise", "finalize", "investigate", "reassess", "revalidate", "recertify",
+    "encourage", "decide", "determine", "select", "choose", "approve", "reject",
+    "authorise", "authorize", "delegate", "empower", "mandate", "oblige",
+    "stipulate", "specify", "codify", "publish", "circulate", "disseminate",
+    "communicate", "notify", "alert", "warn", "flag", "surface", "quantify",
+    "measure", "benchmark", "compare", "evaluate", "appraise", "inspect",
+    "sample", "survey", "interview", "consult", "coordinate", "synchronise",
+    "synchronize", "harmonise", "harmonize", "reconcile", "clarify", "confirm",
+    "challenge", "contest", "renegotiate", "amend", "extend", "renew",
+    "terminate", "suspend", "withhold", "release", "transition", "modernise",
+    "modernize", "upgrade", "refresh", "rotate", "revoke", "decommission",
+    "sunset", "ringfence", "prioritise", "sequence", "stage", "schedule",
+    "budget", "cost", "model", "simulate", "wargame", "stress-test", "pen-test",
+    "red-team", "tabletop", "drill", "train", "upskill", "certify", "license",
+    "onboard", "offboard", "inventory", "catalogue", "catalog", "classify",
+    "tag", "label", "encrypt", "sign", "authenticate", "authorise-access",
+    "segregate", "compartmentalise", "compartmentalize", "monitor-for",
+    "instrument-for", "subscribe", "procure-through", "contract-for",
+    "require-of", "hold", "press", "push", "seek", "obtain", "secure",
+    "establish-with", "embed-in", "build-out", "scale", "pilot-test",
 )
 _LIST_PREFIX = re.compile(r"^(\d+[\.\)]\s*|[-*+]\s*)?(\*\*)?\s*")
 MODAL_RECOMMENDATION = re.compile(
@@ -257,6 +308,14 @@ def load_graph(sb, pillar) -> Dict[str, dict]:
         graph[row["id"]] = dict(row, kind="uncertainty")
     for row in scoped("forecasts", "id,statement"):
         graph[row["id"]] = dict(row, kind="forecast")
+    # Only admitted, reachable figures enter the graph. A figure refused as
+    # decoration, or one that no longer loads, must fail citation like an
+    # invented id would — a brief that renders a broken image has published a
+    # citation it cannot honour.
+    for row in scoped("figures", "id,describes,caption,kind,informative,reachable"):
+        if row.get("informative") and row.get("reachable"):
+            graph[row["id"]] = dict(row, kind="figure",
+                                    statement=row.get("describes") or row.get("caption") or "")
     return graph
 
 
@@ -344,12 +403,35 @@ def check_gates(sb, sentences, pillar=None) -> List[Violation]:
     return out
 
 
-def check_section(markdown: str, graph, allow_unsourced: bool = False) -> List[str]:
+def unmatched_openers(sentences) -> List[str]:
+    """Sentence-initial words on unsourced sentences that are not known verbs.
+
+    The imperative list is curated, so it will always lag the vocabulary a model
+    reaches for. When a section is withheld, this reports the words that failed
+    to match, so a missing verb shows up as a line to read rather than as a
+    section that silently disappeared from the brief.
+    """
+    out = []
+    for v in check_unsourced(sentences):
+        first = re.split(r"[\s,:;]+", _LIST_PREFIX.sub("", v.sentence.strip()).lower(), 1)[0]
+        first = first.strip("*_.()\"'")
+        if first and first not in IMPERATIVE_VERBS and first.isalpha():
+            out.append(first)
+    return sorted(set(out))
+
+
+def check_section(markdown: str, graph, allow_unsourced: bool = False,
+                  entail: bool = False) -> List[str]:
     """Blocking failures for ONE freshly drafted section.
 
-    Deterministic only — no model call — so it is cheap enough to run inside the
-    generation loop. Returns human-readable failure lines that are fed straight
-    back into the retry prompt.
+    The deterministic checks are free. `entail` adds the one model-assisted
+    check — does the cited quote actually support the sentence — which was
+    previously only run in the final audit. That was too late: three sentences
+    citing quotes that did not support them were published, and the audit could
+    only report them after the fact. Run in the loop, the same three become a
+    retry. It costs roughly one batched call per section per attempt.
+
+    Returns human-readable failure lines, fed straight back into the retry prompt.
     """
     sentences = sentences_of(markdown)
     out = []
@@ -360,6 +442,17 @@ def check_section(markdown: str, graph, allow_unsourced: bool = False) -> List[s
         for v in check_unsourced(sentences):
             out.append("This sentence states a fact with no citation: \"%s\""
                        % v.sentence[:140])
+    if entail:
+        try:
+            violations, _ = check_entailment(sentences, graph)
+            for v in violations:
+                out.append("The citation does not support this sentence — %s: \"%s\""
+                           % (v.detail.split(": ", 1)[-1], v.sentence[:120]))
+        except Exception as exc:
+            # A failed entailment call must not withhold a section that the
+            # deterministic checks passed. Surfaced, not swallowed.
+            print("      ! entailment check unavailable (%s)" % str(exc)[:70])
+
     seen, uniq = set(), []
     for line in out:
         if line not in seen:
@@ -378,14 +471,30 @@ Judge support only. A sentence can be true in the world and still be unsupported
 by the quote attached to it — that counts as NOT supported. Paraphrase is fine;
 new facts, added numbers, added causation or broadened scope are not.
 
+Be precise, not merely strict. If the quote states the substance of the sentence
+in different words, it SUPPORTS it — restating "tools designed to withstand the
+attack of a quantum computer" as "protects against quantum cryptanalysis" is
+paraphrase, not a new claim. Mark NOT supported when the sentence adds something
+the quote does not contain: a figure, a date, a causal link, a wider population,
+or a stronger degree of certainty.
+
 Return one verdict per item, using the item's index.
 
 {items}
 """
 
 
-def check_entailment(sentences, graph, batch_size=20):
-    """Returns (violations, n_claims_checked)."""
+def check_entailment(sentences, graph, batch_size=20, fast=False):
+    """Returns (violations, n_claims_checked).
+
+    Judged on the reasoning deployment, not the cheap one. This check now gates
+    publication rather than only reporting afterwards, which inverts the cost of
+    its two errors: a missed over-attribution is one bad citation, but a false
+    "not supported" withholds a whole correct section. The cheap judge produced
+    exactly that — it rejected a sentence about post-quantum standards whose
+    quote span read "encryption tools designed to withstand the attack of a
+    quantum computer", which is the claim verbatim.
+    """
     items, meta = [], []
     for sentence in sentences:
         ev = [graph[c] for c in CITATION.findall(sentence)
@@ -404,9 +513,8 @@ def check_entailment(sentences, graph, batch_size=20):
         chunk = items[start:start + batch_size]
         rendered = "\n\n".join(
             "[%d]\nSENTENCE: %s\nSOURCE QUOTE(S): %s" % (i, s, q) for i, s, q in chunk)
-        # Entailment judging is per-sentence and high volume — cheap deployment.
         result = llm.structured(ENTAIL_PROMPT.format(items=rendered),
-                                EntailmentBatch, fast=True, effort="medium")
+                                EntailmentBatch, fast=fast, effort="high")
 
         for verdict in result.verdicts:
             if verdict.supported or verdict.index >= len(meta):
@@ -420,6 +528,36 @@ def check_entailment(sentences, graph, batch_size=20):
 
 
 # --------------------------------------------------------------------------
+# Sections whose subject is the evidence base itself. Mirrors
+# generate.EPISTEMIC_SECTIONS: the generation loop already exempts these, and an
+# audit that does not know which section a sentence came from reported three
+# "unsourced assertions" for sentences the pipeline deliberately allowed —
+# penalising the brief for being honest about its own gaps.
+EPISTEMIC_SECTIONS = {"limits"}
+
+
+def split_sections(body: str, template_sections) -> List[tuple]:
+    """[(section_key, markdown)] by matching '## ' headings to template titles.
+
+    Falls back to a single None-keyed block when the headings do not match, so a
+    hand-edited report is still audited — just without section awareness.
+    """
+    titles = {(s.get("title") or "").strip().lower(): s.get("key")
+              for s in (template_sections or [])}
+    out, key, buf = [], None, []
+    for line in body.splitlines():
+        if line.startswith("## "):
+            if buf:
+                out.append((key, "\n".join(buf)))
+            key = titles.get(line[3:].strip().lower())
+            buf = []
+        else:
+            buf.append(line)
+    if buf:
+        out.append((key, "\n".join(buf)))
+    return out or [(None, body)]
+
+
 def main():
     ap = argparse.ArgumentParser(description="Verify a generated report against the graph")
     ap.add_argument("--run-id", help="pipeline_runs row to report progress into")
@@ -443,9 +581,23 @@ def main():
     print("Verifying %r\n  %d sentences, %d carrying citations, %d graph objects\n"
           % (report.get("title"), len(sentences), cited, len(graph)))
 
+    tpl = sb.table("report_templates").select("sections") \
+            .eq("id", report.get("template_id")).execute().data
+    tpl_sections = tpl[0]["sections"] if tpl else []
+
     violations = []
     violations += check_citations(sentences, graph)
-    violations += check_unsourced(sentences)
+
+    # Unsourced is scored per section, so the epistemic sections are exempt here
+    # exactly as they are during generation.
+    exempt = 0
+    for key, chunk in split_sections(body, tpl_sections):
+        chunk_sentences = sentences_of(chunk)
+        if key in EPISTEMIC_SECTIONS:
+            exempt += len(check_unsourced(chunk_sentences))
+            continue
+        violations += check_unsourced(chunk_sentences)
+
     violations += check_class_discipline(sentences, graph)
     violations += check_gates(sb, sentences, pillar)
 
@@ -465,6 +617,9 @@ def main():
     blockers = [v for v in violations if v.severity == "BLOCKER"]
     print("-" * 70)
     print("checks: %s" % (by_check or "all clean"))
+    if exempt:
+        print("%d sentence(s) in epistemic sections exempt from the citation "
+              "requirement (statements about what the evidence does not show)" % exempt)
     if n_checked:
         supported = n_checked - by_check.get("ENTAILMENT", 0)
         print("citation faithfulness: %d/%d = %.2f"

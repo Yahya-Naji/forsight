@@ -21,8 +21,16 @@ const LABEL =
   /^\*{0,2}(so what|trigger|implication|implications|action|owner|why|bottom line|recommendation|watch|horizon|confidence|falsifier|what would refute this|next step)\*{0,2}\s*[:\u2014-]\s*/i;
 
 // A sentence opening on a condition asserts nothing about the present.
+// A discourse marker in front of a conditional does not make it an assertion.
 const CONDITIONAL_OPENER =
-  /^(if|should|unless|were\s+\w+\s+to|in the event|absent|provided that|so long as)\b/i;
+  /^(?:(?:however|conversely|moreover|furthermore|yet|but|thus|therefore|equally|by contrast|on the other hand|that said)[,:]?\s+)?(if|should|unless|were\s+\w+\s+to|in the event|absent|provided that|so long as)\b/i;
+
+// A falsifier states what would refute a forecast — required on every forecast
+// in this system, so the report must state them, and they assert nothing about
+// the present. The copula must follow immediately: matching "the falsifier"
+// alone exempted a sentence that named one and then asserted a breach.
+const FALSIFIER_CLAUSE =
+  /^(the |its )?(falsifier|falsifying (observation|evidence)|refuting (observation|evidence)|disconfirming (observation|evidence))\s*(is|are|would be|:|\u2014|-)\s|^what would (refute|falsify|disconfirm)\b|\bwould (refute|falsify|disconfirm) (this|it|the forecast)\b/i;
 
 // Both halves must match: something naming this document or its evidence base,
 // AND a predicate about coverage. "This report shows attackers breached the
@@ -33,26 +41,44 @@ const META_PREDICATE =
   /\b(excluded|withheld|blocked|omitted|unverified|insufficient|does not (support|establish|extend|cover)|do not (support|establish)|cannot be (confirmed|verified|established)|could not be established|not established|requires? (customer )?validation|no (uae-specific |direct )?evidence)\b/i;
 
 const isMetaClaim = (s: string) => META_SUBJECT.test(s) && META_PREDICATE.test(s);
-const isCondition = (s: string) => CONDITIONAL_OPENER.test(s.trim());
+const isCondition = (s: string) =>
+  CONDITIONAL_OPENER.test(s.trim()) || FALSIFIER_CLAUSE.test(s.trim());
 
 const HEDGES = ["forecast", "speculative", "outlook", "projected", "projection", "may", "might",
   "could", "unproven", "single-source", "not confirmed", "cannot be confirmed", "uncertain",
   "pending", "requires validation", "suggests", "indicates", "appears", "potential", "possible",
   "working view", "hypothesis", "not yet"];
 
-const IMPERATIVE = new Set(["establish","develop","monitor","review","validate","implement",
-  "require","strengthen","refine","prioritise","prioritize","define","maintain","expand","adopt",
-  "introduce","commission","assess","ensure","conduct","create","build","run","track","acquire",
-  "mandate","negotiate","publish","fund","pilot","procure",
-  // A closed verb list quietly withholds sections for using a synonym.
-  "launch","enforce","embed","extend","integrate","align","audit","map","baseline",
-  "formalise","formalize","standardise","standardize","designate","assign","appoint",
-  "convene","task","instruct","direct","issue","revise","update","tighten","restrict",
-  "verify","test","exercise","rehearse","resource","staff","invest","allocate",
-  "escalate","report","record","document","share","brief","consult","engage",
-  "contract","certify","accredit","qualify","screen","vet","segment","isolate",
-  "patch","harden","instrument","log","add","apply","set","raise","reduce","limit",
-  "cap","phase","retire","replace","migrate","consolidate","centralise","centralize"]);
+const IMPERATIVE = new Set([
+  // Generated from pipeline/verify.py IMPERATIVE_VERBS. tests/test_parity.py fails if
+  // the two drift: telling a reader an edit is fine and then withholding the section
+  // is worse than running no check at all.
+  "accredit","acquire","add","adopt","alert","align","allocate","amend","apply","appoint",
+  "appraise","approve","assess","assign","audit","authenticate","authorise",
+  "authorise-access","authorize","baseline","benchmark","brief","budget","build","build-out",
+  "cap","catalog","catalogue","centralise","centralize","certify","challenge","choose",
+  "circulate","clarify","classify","codify","commission","communicate","compare",
+  "compartmentalise","compartmentalize","conduct","confirm","consolidate","consult","contest",
+  "contract","contract-for","convene","coordinate","cost","create","decide","decommission",
+  "define","delegate","designate","determine","develop","direct","disseminate","document",
+  "drill","embed","embed-in","empower","encourage","encrypt","enforce","engage","ensure",
+  "escalate","establish","establish-with","evaluate","exercise","expand","extend","finalise",
+  "finalize","flag","formalise","formalize","fund","harden","harmonise","harmonize","hold",
+  "implement","inspect","instruct","instrument","instrument-for","integrate","interview",
+  "introduce","inventory","invest","investigate","isolate","issue","label","launch","license",
+  "limit","log","maintain","mandate","map","measure","migrate","model","modernise",
+  "modernize","monitor","monitor-for","negotiate","notify","oblige","obtain","offboard",
+  "onboard","patch","pen-test","phase","pilot","pilot-test","press","prioritise","prioritize",
+  "procure","procure-through","publish","push","qualify","quantify","raise","reassess",
+  "recertify","reconcile","record","red-team","reduce","refine","refresh","rehearse","reject",
+  "release","renegotiate","renew","replace","report","require","require-of","resource",
+  "restrict","retire","revalidate","review","revise","revoke","ringfence","rotate","run",
+  "sample","scale","schedule","screen","secure","seek","segment","segregate","select",
+  "sequence","set","share","sign","simulate","specify","staff","stage","standardise",
+  "standardize","stipulate","strengthen","stress-test","subscribe","sunset","surface",
+  "survey","suspend","synchronise","synchronize","tabletop","tag","task","terminate","test",
+  "tighten","track","train","transition","update","upgrade","upskill","validate","verify",
+  "vet","wargame","warn","withhold"]);
 const MODAL = /\b(should|must|ought to|recommends?|recommended|is recommended)\b/i;
 
 const isRecommendation = (s: string) => {

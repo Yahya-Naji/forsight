@@ -12,6 +12,7 @@ documents only to break ties within a publisher.
 Usage: python rules.py
 """
 import argparse
+import re
 from typing import Dict, List, Tuple
 
 import config
@@ -214,3 +215,58 @@ if __name__ == "__main__":
 
     config.update_run(a.run_id, counts={
         "rules": sb.table("evidence").select("id", count="exact", head=True).execute().count or 0})
+
+
+# --------------------------------------------------------------------------
+# figures
+# --------------------------------------------------------------------------
+# Kinds that carry information a reader can check. A photograph of a server
+# room, or a publisher's logo, adds the visual authority of the source while
+# carrying none of its content — which is the same failure as citing a Tier-1
+# publisher for a claim it never made. The model proposes the kind; this rule
+# decides whether the figure may appear in a brief.
+INFORMATIVE_KINDS = {"CHART", "DIAGRAM", "MAP", "TABLE_IMAGE", "TIMELINE", "SCREENSHOT"}
+
+# Words publishers use when they are describing artwork. A hero image whose alt
+# text reads "Digital illustration of Europe map highlighting network
+# connections" was classified MAP on the strength of the word "map", and it is
+# decoration. When the publisher says the image is a representation, take them
+# at their word.
+ARTWORK = re.compile(
+    r"\b(illustration|illustrative|graphic of|pictorial|conceptual|abstract|"
+    r"stock (photo|image)|symbol|symbolic|artwork|artist|rendering|render of|"
+    r"depict(?:ed|ion) as|glowing|silhouette|decorative|banner|hero image|"
+    r"representation of a|imagery)\b", re.I)
+
+# A caption numbered by the publisher is the strongest signal that the image is
+# part of the argument: "Figure 3. Industry distribution of targeted
+# enterprises" is a claim the reader can check against the plot.
+NUMBERED_CAPTION = re.compile(r"^\s*(fig(?:ure)?|table|chart|exhibit)\s*\.?\s*\d+", re.I)
+
+MIN_ALT_FOR_INTENT = 40
+
+
+def figure_is_informative(kind: str, caption: str = "", alt: str = "") -> tuple:
+    """(admit, reason). The model proposes `kind`; this decides admission.
+
+    Kind alone was not enough. Every genuine figure collected in the first run
+    carried a publisher's numbered caption, and every false positive was a hero
+    illustration with no caption whose alt text described artwork. So admission
+    needs evidence of editorial intent as well as a plausible kind — otherwise
+    a stock image of a map is cited as a map.
+    """
+    kind = (kind or "").upper()
+    caption, alt = (caption or "").strip(), (alt or "").strip()
+
+    if kind not in INFORMATIVE_KINDS:
+        return False, "kind %s is decoration, not information" % (kind or "UNKNOWN")
+    if ARTWORK.search(caption) or ARTWORK.search(alt):
+        return False, "described as artwork by the publisher"
+    if NUMBERED_CAPTION.match(caption):
+        return True, "publisher numbered it as a figure"
+    if caption:
+        return True, "carries a publisher caption"
+    if len(alt) >= MIN_ALT_FOR_INTENT:
+        return True, "substantive alt text, no caption"
+    return False, ("no caption and only %d chars of alt text — cannot tell what "
+                   "it shows" % len(alt))

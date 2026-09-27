@@ -15,8 +15,11 @@ what was withheld, so "bounded generation" is auditable instead of asserted.
 Usage: python generate.py --pillar CYBERSECURITY --title "..."
 """
 import argparse
+import hashlib
 import json
+import os
 import re
+from concurrent import futures
 
 import labels
 import llm
@@ -50,6 +53,19 @@ CITATION RULES
   decorate, and never cite an id absent from the data below.
 - Refer to signals, risks and findings by bare id (SIG-CS-01, R-CS-01) — brackets
   are for evidence only.
+
+FIGURE RULES
+- The data may include a `figures` list: charts, diagrams, timelines and
+  screenshots published in the sources, each with an id and a description.
+- Cite a figure in BRACKETS exactly like evidence: [FIG-004]. The figure is then
+  placed into the report automatically, with its caption and publisher.
+- NEVER write an image link, a file name or a URL. You are given descriptions,
+  not files, and inventing a path produces a broken image under a real
+  publisher's name. The id is the only thing you control.
+- Cite a figure only where it shows what the sentence says. A figure is
+  illustration OF a claim, not a substitute for one: the sentence still needs its
+  own [EV-xxx] citation.
+- Do not describe a figure the reader can see. Say what it means.
 
 FORECAST RULES
 - Plausibility bands (Likely / Possible / Uncertain / Speculative) are computed
@@ -104,6 +120,26 @@ Y". It asserts an evaluation no row supports, so it is rejected every time.
             contract award or at renewal."
 Never write that something is important. Say what follows from it.
 
+THE FIRST SENTENCE UNDER A HEADING CARRIES ITS OWN CITATIONS
+The sentence that introduces a point is where drafts fail most often. It is
+written as a framing summary — "Threat actors are increasingly leveraging AI to
+enhance impersonation" — and it is an assertion about the world with nothing
+attached, so it is rejected, even when the three cited sentences below it are
+exactly what it summarises. A summary does not inherit the citations of the
+sentences under it.
+So put the ids on it: "Threat actors are increasingly using AI to enhance
+impersonation and phishing [SIG-CS-12; SIG-CS-25]". If a claim summarises several
+rows, cite several. If no row supports the summary as written, narrow it until
+one does, or delete it and open on the cited specific instead.
+
+COVERAGE — do not confuse concision with omission
+Write densely WITHIN each point, and still cover every point the section asks
+for. Where the instructions ask for three to five findings or advances, produce
+three to five, each with its own action title, its own cited evidence and its
+own "So what:" line. One well-cited paragraph is not a section. If the data
+supports fewer than the instructions ask for, produce what it supports and say
+in one sentence which asked-for element the evidence base does not cover.
+
 Editorial connective tissue is the fifth kind, and it is the reason drafts fail.
   REJECTED: "Proactive assurance measures are crucial to prevent exploitation."
   REJECTED: "Failure to address these vulnerabilities leaves infrastructure
@@ -111,8 +147,8 @@ Editorial connective tissue is the fifth kind, and it is the reason drafts fail.
   REJECTED: "The environment is shifting due to emerging dynamics."
   REJECTED: "Enhanced protective measures are needed to mitigate disruption."
 Each of those asserts something with no source. Delete the sentence, or convert
-it into kind 2 by naming the action you actually mean. Prefer fewer, denser
-sentences over prose that has to be padded to flow.
+it into kind 2 by naming the action you actually mean. Cutting padding is not a
+reason to cover less ground — see COVERAGE above.
 
 LABELS
 - The data is already written in reader-facing labels. Reproduce them exactly.
@@ -132,7 +168,19 @@ RETRY_SUFFIX = """
 YOUR PREVIOUS DRAFT FAILED VERIFICATION. Fix exactly these problems:
 {failures}
 
+READ THE DIRECTION OF EACH PROBLEM. Some ask you to REMOVE or NARROW something —
+an uncited claim, a citation whose quote does not support it. Others ask you to
+ADD something — more action titles, a figure citation, more cited sentences.
+A problem asking for more material is never solved by rewording what is already
+there, and never by cutting elsewhere: take the missing items from the data
+above. Keep everything that passed.
+
 Cite ONLY evidence ids that appear in the data above. Do not invent ids.
+
+Where a citation is reported as not supporting its sentence, the quote behind
+that id does not say what you wrote. Do not swap in a different id and do not
+soften the wording — narrow the sentence to what the quote actually states, or
+drop the claim.
 
 For each sentence named above, choose one of four exits — do not simply reword it:
   (a) attach the id from the data that actually supports it;
@@ -141,7 +189,11 @@ For each sentence named above, choose one of four exits — do not simply reword
   (d) rewrite it as a labelled condition ("Trigger: ...").
 A reworded assertion with no source fails again for the same reason."""
 
-MAX_RETRIES = 2
+# Three checks now act on each draft — unsourced, entailment and citation
+# density — and they interact: fixing a citation that does not entail can break
+# the density floor, and vice versa. Two attempts was enough for one check and
+# withholds well-formed sections under three, so the budget is a flag.
+DEFAULT_RETRIES = 3
 
 # Sections whose subject is the evidence base itself. "Confirming this would
 # require data on exploitation rates" is a statement about what is missing —
@@ -178,6 +230,139 @@ def opener_failures(markdown: str, section_key: str):
     if not re.search(r"\d|\[EV-|\bF-[A-Z]{2}-\d|\bR-[A-Z]{2}-\d|\bSIG-[A-Z]{2}-\d", first):
         out.append("The opening sentence contains no specific fact or citation.")
     return out
+
+
+# One citation per this many assertive sentences, in sections that were given
+# evidence to work from.
+MIN_SENTENCES_PER_CITATION = 3
+
+
+def density_failures(body_md: str, sec) -> list:
+    """Reject a section that answered a citation problem by deleting citations.
+
+    Adding the entailment check to the generation loop produced exactly the wrong
+    adaptation: rather than narrowing a sentence to what its quote supported, the
+    model dropped the citation and hedged the sentence. Faithfulness went to
+    1.00 while the report fell from thirteen cited sentences to three — a
+    strictly worse brief that scored better on every check.
+
+    So citation density has a floor wherever evidence was supplied. A section can
+    still say little, but it cannot make claims anonymously.
+    """
+    if "evidence" not in (sec.get("inputs") or []):
+        return []                      # actions and similar carry no citations
+    sentences = verify.sentences_of(body_md)
+    assertive = [x for x in sentences if verify.ASSERTIVE.search(x)]
+    cited = [x for x in sentences
+             if verify.CITATION.search(x) or verify.OBJECT_REF.search(x)]
+    if len(assertive) < MIN_SENTENCES_PER_CITATION:
+        return []
+    need = max(1, len(assertive) // MIN_SENTENCES_PER_CITATION)
+    if len(cited) >= need:
+        return []
+    return ["This section carries %d citation(s) across %d assertive sentences; it "
+            "needs at least %d. Do not answer a citation problem by removing the "
+            "citation — cite the id that does support the sentence, narrow the "
+            "sentence to what a quote states, or cut the claim entirely."
+            % (len(cited), len(assertive), need)]
+
+
+# The model writes both [FIG-002] and [FIG-002, FIG-005]. Matching only the
+# single-id form reported "you cited no figures" at a draft that cited two, and
+# then withheld the section for complying — findall over the whole bracket keeps
+# both forms working, the way the exporter's evidence pattern already did.
+FIG_CITE = re.compile(r"\[\s*(FIG-\d+(?:\s*,\s*FIG-\d+)*)\s*\]")
+FIG_ID = re.compile(r"FIG-\d+")
+
+
+def cited_figures(text: str) -> list:
+    """Figure ids in citation brackets, in order, de-duplicated."""
+    return list(dict.fromkeys(
+        fid for group in FIG_CITE.findall(text) for fid in FIG_ID.findall(group)))
+BOLD_TITLE = re.compile(r"^\s*\*\*[^*]{12,}\*\*\s*$", re.M)
+
+# The section stating what it could not cover, which satisfies the floor below.
+NAMES_A_GAP = re.compile(
+    r"\b(the evidence base does not|no evidence (was|is) (found|available)|"
+    r"the data does not (cover|support|establish)|not covered by the evidence|"
+    r"no (admitted|cited) evidence (for|on)|could not be established)\b", re.I)
+MIN_ACTION_TITLES = 3
+
+
+def structure_failures(body_md: str, sec, data) -> list:
+    """Floors on what a section must contain, not just what it must avoid.
+
+    Every other check in the loop removes things. Under that pressure the model
+    converges on a short, safe section: the advances section came back with one
+    action title where the template asks for three to five, and cited none of
+    the seven figures it was given. A brief that passes every prohibition and
+    says almost nothing is not the goal, so the shape the template asks for is
+    checked too.
+    """
+    out = []
+    instructions = sec.get("instructions") or ""
+
+    if "ACTION TITLE" in instructions:
+        found = len(BOLD_TITLE.findall(body_md))
+        # The floor is "meet the count OR name the shortfall". Demanding the count
+        # unconditionally pushed the model to stretch citations over advances the
+        # evidence does not carry — four entailment failures in one draft — which
+        # is the opposite of the intent. A stated gap is an acceptable answer here
+        # for the same reason it is everywhere else in this system.
+        if found < MIN_ACTION_TITLES and not NAMES_A_GAP.search(body_md):
+            out.append("This section has %d bolded action title(s); the template "
+                       "asks for at least %d, each stating a conclusion with its "
+                       "own cited evidence and one 'So what:' line. Either add the "
+                       "missing ones from the data, or state in one sentence which "
+                       "area the evidence base does not cover — do not stretch a "
+                       "citation to reach the count."
+                       % (found, MIN_ACTION_TITLES))
+    return out
+
+
+def figure_notes(body_md: str, data) -> list:
+    """Advisory, not blocking.
+
+    Every figure available comes from one vendor report on invoice fraud. In a
+    section about post-quantum deadlines there is nothing for it to illustrate,
+    and the figure rules say to cite a figure only where it shows what the
+    sentence says. Withholding the section for obeying that rule was wrong, so an
+    uncited figure is now reported and the draft stands.
+    """
+    figures = data.get("figures") or []
+    if figures and not cited_figures(body_md):
+        return ["%d figure(s) available, none cited: %s"
+                % (len(figures), ", ".join(f["id"] for f in figures))]
+    return []
+
+
+SECTION_CACHE = os.path.join(
+    os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "out", ".cache", "sections")
+
+
+def _cache_key(prompt: str) -> str:
+    return hashlib.sha256(prompt.encode("utf-8")).hexdigest()[:32]
+
+
+def cache_get(prompt: str):
+    path = os.path.join(SECTION_CACHE, _cache_key(prompt) + ".json")
+    try:
+        with open(path, encoding="utf-8") as fh:
+            return json.load(fh)
+    except (OSError, ValueError):
+        return None
+
+
+def cache_put(prompt: str, result: dict) -> None:
+    """Keyed on the whole prompt, so any change to the data or the template
+    misses the cache. Identical inputs therefore reproduce the same section."""
+    try:
+        os.makedirs(SECTION_CACHE, exist_ok=True)
+        with open(os.path.join(SECTION_CACHE, _cache_key(prompt) + ".json"),
+                  "w", encoding="utf-8") as fh:
+            json.dump(result, fh)
+    except OSError:
+        pass                       # a cache that cannot be written is not fatal
 
 
 def _dedupe_gates(rows):
@@ -305,6 +490,16 @@ def fetch_inputs(sb, pillar, wanted, section_key, brief=None):
         take("indicators", usable)
         if len(rows) - len(usable):
             withheld["indicators"] = len(rows) - len(usable)
+    if "figures" in wanted:
+        # Only what rules.py admitted and reachability confirmed. The model is
+        # given the description, never the URL — see embed_figures.
+        figs = [f for f in rows_for("figures",
+                "id,kind,describes,caption,document_id,informative,reachable")
+                if f.get("informative") and f.get("reachable")]
+        for f in figs:
+            f.pop("informative", None)
+            f.pop("reachable", None)
+        take("figures", figs)
     if "links" in wanted:
         take("links", sb.table("links").select("*").execute().data, has_id=False)
     if "gates" in wanted:
@@ -318,6 +513,49 @@ def fetch_inputs(sb, pillar, wanted, section_key, brief=None):
             withheld["gates"] = len(gates) - len(mine)
 
     return data, {"scoped": scoped, "passed": passed, "withheld": withheld}
+
+
+def embed_figures(sb, markdown: str, pillars):
+    """Replace figure citations with the figure, rendered from the database.
+
+    The model cites [FIG-004]; it is never shown the file URL and never writes
+    one. An invented URL would render as a broken image carrying a real
+    publisher's name, which is worse than a missing figure — so the id is the
+    only thing the model controls, and this resolves it.
+
+    Returns (markdown, ids_rendered).
+    """
+    cited = set(cited_figures(markdown))
+    if not cited:
+        return markdown, []
+
+    rows = {r["id"]: r for r in sb.table("figures")
+            .select("id,url,kind,describes,caption,credit,document_id,"
+                    "informative,reachable").in_("id", sorted(cited)).execute().data}
+    pubs = {r["id"]: r["publisher"] for r in
+            sb.table("source_registry").select("id,publisher").execute().data}
+
+    out, rendered = [], []
+    for para in markdown.split("\n\n"):
+        out.append(para)
+        for fid in cited_figures(para):
+            row = rows.get(fid)
+            # Refused or unreachable figures never reach here — load_graph keeps
+            # them out of the graph, so citing one fails verification first.
+            if not row or not row.get("informative") or not row.get("reachable"):
+                continue
+            doc = sb.table("documents").select("title,url,published_on,registry_id") \
+                    .eq("id", row["document_id"]).execute().data
+            doc = doc[0] if doc else {}
+            pub = pubs.get(doc.get("registry_id") or "", "")
+            date = (" %s" % doc["published_on"]) if doc.get("published_on") else ""
+            caption = (row.get("caption") or row.get("describes") or "").strip().rstrip(".")
+            alt = (row.get("describes") or caption or fid).replace("]", ")")
+            credit = " — ".join(x for x in [pub + date, row.get("credit") or ""] if x.strip())
+            out.append("![%s](%s)" % (alt[:300], row["url"]))
+            out.append("*%s — %s. %s* <%s>" % (fid, caption[:300], credit, doc.get("url", "")))
+            rendered.append(fid)
+    return "\n\n".join(out), rendered
 
 
 def build_references(sb, pillar, cited=None):
@@ -358,6 +596,15 @@ def main():
     ap.add_argument("--title")
     ap.add_argument("--template", default="TPL-BRIEF-01")
     ap.add_argument("--brief", help="report_briefs id — generate against a reader's brief")
+    ap.add_argument("--workers", type=int, default=3,
+                    help="sections drafted concurrently (they are independent)")
+    ap.add_argument("--fresh", action="store_true",
+                    help="ignore cached section drafts and redraft everything")
+    ap.add_argument("--retries", type=int, default=DEFAULT_RETRIES,
+                    help="redraft attempts per section before withholding it")
+    ap.add_argument("--no-entail", action="store_true",
+                    help="skip the in-loop entailment check (faster, publishes "
+                         "over-attributed citations the final audit will catch)")
     a = ap.parse_args()
     config.update_run(getattr(a, "run_id", None), stage="generate", status="RUNNING")
     sb = db()
@@ -365,6 +612,7 @@ def main():
         ap.error("--pillar is required unless --brief supplies one")
     if not a.title and not a.brief:
         ap.error("--title is required unless --brief supplies one")
+    max_retries = a.retries
     tpl = sb.table("report_templates").select("*").eq("id", a.template).execute().data[0]
 
     brief = load_brief(sb, a.brief) if a.brief else None
@@ -385,15 +633,14 @@ def main():
 
     graph = verify.load_graph(sb, pillars)
     title = a.title or (brief or {}).get("title") or "Strategic brief"
-    parts = [f"# {title}\n"]
-    ledgers = []
+
+    # ---- phase 1: gather inputs and build prompts --------------------------
+    # Every database read happens here, on one thread, so phase 2 can run wide
+    # without sharing a Supabase client across threads.
+    jobs = []
     for sec in tpl["sections"]:
         if sec["key"] == "references":
-            cited = {c for led in ledgers for c in led["citations"]}
-            refs = "\n\n".join(build_references(sb, p, cited) for p in pillars)
-            parts.append(f"## {sec['title']}\n\n{refs}")
             continue
-
         data, ledger = fetch_inputs(sb, pillars[0], sec["inputs"], sec["key"], brief)
         # Raw enums never reach the model, so they cannot reach the page.
         payload = json.dumps(labels.humanise(data), default=str, indent=1)
@@ -402,35 +649,106 @@ def main():
                 f"section {sec['key']}: {len(payload)} chars of input exceeds the "
                 "context budget. Link rows to sections rather than truncating — "
                 "silent truncation would drop evidence without telling anyone.")
-
         base = SECTION_PROMPT.format(
             title=sec["title"], instructions=sec["instructions"], data=payload,
             brief_block=brief_block)
+        jobs.append({"sec": sec, "data": data, "ledger": ledger,
+                     "payload": payload, "base": base})
+
+    # ---- phase 2: draft and verify, concurrently ---------------------------
+    # Sections are independent — only the reference list depends on the others,
+    # and that is assembled mechanically afterwards. Run sequentially, seven
+    # sections at up to six attempts of two model calls each is ~80 round trips
+    # in series, which made a single report a twenty-minute wait.
+    def run_section(job):
+        try:
+            return _draft_section(job)
+        except Exception as exc:
+            # One section failing must not discard the six that succeeded. A
+            # dropped connection used to abort the whole report after twenty
+            # minutes of work; now the section is withheld and named, and the
+            # rest of the brief still assembles.
+            return {"body": "", "failures": ["Drafting failed: %s" % str(exc)[:200]],
+                    "attempt": 0, "notes": [],
+                    "log": ["  ✗ %s: drafting failed — %s"
+                            % (job["sec"]["key"], str(exc)[:110])]}
+
+    def _draft_section(job):
+        sec, data = job["sec"], job["data"]
+        base, log = job["base"], []
+        cached = cache_get(base) if not a.fresh else None
+        if cached:
+            log.append("  ⤿ %s: reusing the passed draft from an earlier run" % sec["key"])
+            return dict(cached, log=log, notes=[])
 
         body_md, failures, attempt = "", [], 0
-        while attempt <= MAX_RETRIES:
+        notes = []
+        while attempt <= max_retries:
             prompt = base if not failures else base + RETRY_SUFFIX.format(
                 failures="\n".join("- " + f for f in failures))
             body_md = llm.text(prompt, effort="high", max_output_tokens=8000)
-            failures = (verify.check_section(body_md, graph,
-                                             allow_unsourced=sec["key"] in EPISTEMIC_SECTIONS)
-                        + opener_failures(body_md, sec["key"]))
+            failures = (verify.check_section(
+                            body_md, graph,
+                            allow_unsourced=sec["key"] in EPISTEMIC_SECTIONS,
+                            entail=not a.no_entail)
+                        + opener_failures(body_md, sec["key"])
+                        + density_failures(body_md, sec)
+                        + structure_failures(body_md, sec, data))
+            notes = figure_notes(body_md, data)
             if not failures:
                 break
             attempt += 1
-            if attempt <= MAX_RETRIES:
-                print(f"  ! {sec['key']}: {len(failures)} verification failure(s), "
-                      f"retry {attempt}/{MAX_RETRIES}")
+            if attempt <= max_retries:
+                log.append("  ! %s: %d verification failure(s), retry %d/%d"
+                           % (sec["key"], len(failures), attempt, max_retries))
                 for f in failures[:3]:
-                    print(f"      {f[:110]}")
+                    log.append("      %s" % f[:110])
+
+        result = {"body": body_md, "failures": failures, "attempt": attempt}
+        if not failures:
+            # Only passed drafts are cached. Caching a failed one would skip the
+            # retries that were supposed to fix it — and a dropped connection
+            # part-way through used to throw away every section already done.
+            cache_put(base, result)
+        return dict(result, log=log, notes=notes)
+
+    workers = max(1, min(a.workers, len(jobs)))
+    print("drafting %d sections, %d at a time\n" % (len(jobs), workers))
+    with futures.ThreadPoolExecutor(max_workers=workers) as pool:
+        results = list(pool.map(run_section, jobs))   # order preserved
+
+    # ---- phase 3: assemble in template order ------------------------------
+    parts = [f"# {title}\n"]
+    ledgers = []
+    done = {job["sec"]["key"]: (job, res) for job, res in zip(jobs, results)}
+    for sec in tpl["sections"]:
+        if sec["key"] == "references":
+            cited = {c for led in ledgers for c in led["citations"]}
+            refs = "\n\n".join(build_references(sb, p, cited) for p in pillars)
+            parts.append(f"## {sec['title']}\n\n{refs}")
+            continue
+
+        job, res = done[sec["key"]]
+        ledger, payload = job["ledger"], job["payload"]
+        body_md, failures, attempt = res["body"], res["failures"], res["attempt"]
+        for line in res["log"]:
+            print(line)
+        for note in res["notes"]:
+            print("      note: %s" % note[:110])
 
         withheld_section = bool(failures)
         if withheld_section:
+            openers = verify.unmatched_openers(verify.sentences_of(body_md))
             # Better a visible hole than a plausible paragraph on a citation
             # that does not exist.
             body_md = ("_Section withheld: failed verification after "
-                       f"{MAX_RETRIES} retries (see generation ledger)._")
-            print(f"  ✗ {sec['key']}: WITHHELD after {MAX_RETRIES} retries")
+                       f"{max_retries} retries (see generation ledger)._")
+            print(f"  ✗ {sec['key']}: WITHHELD after {max_retries} retries")
+            # Name the words that defeated the imperative check. A recommendation
+            # rejected for opening on a verb the list does not know is a gap in
+            # verify.py, not a defect in the draft, and it should be readable.
+            if openers:
+                print("      unmatched sentence openers: %s" % ", ".join(openers[:12]))
 
         parts.append(f"## {sec['title']}\n\n{body_md}")
         ledger.update({"key": sec["key"], "title": sec["title"],
@@ -446,6 +764,9 @@ def main():
               + (f" (retries {attempt})" if attempt else ""))
 
     body = "\n\n".join(parts)
+    body, figs_rendered = embed_figures(sb, body, pillars)
+    if figs_rendered:
+        print("figures rendered: %s" % ", ".join(dict.fromkeys(figs_rendered)))
     gates_open = sb.table("validation_gates").select("id").eq("status", "OPEN").execute().data
     status = "GATES_OPEN" if gates_open else "DRAFT"
     rep = sb.table("reports").insert({

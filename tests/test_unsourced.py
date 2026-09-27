@@ -19,6 +19,8 @@ MUST_FAIL = [
     "**Bold text that also asserts** that two primes were breached last quarter.",
     "Procurement lead times grew to eighteen months across the sector.",
     "3. **Context**: Two UAE primes were breached in the last quarter.",
+    "The falsifier was triggered and two UAE primes were breached last quarter.",
+    "Such planning is necessary to address the longer lead time for migration.",
 ]
 
 MUST_PASS = [
@@ -35,6 +37,12 @@ MUST_PASS = [
     "- **Owner**: Assign the procurement authority as accountable party.",
     "Mandate clauses now. Trigger: Increased incidents linked to supplier tooling.",
     "Launch supplier training programmes on advanced threat mitigation.",
+    "The falsifier is an adoption rate below 50% among UAE government entities.",
+    "The falsifier is the absence of operational digital identity systems by 2027.",
+    "What would refute this: no UAE prime reports a supplier-origin incident.",
+    "However, if migration slips past 2030, the exposure falls on legacy systems.",
+    "Finalize and enforce implementation guidelines for zero-trust architecture.",
+    "Reassess if no operational digital identity systems are fielded by 2027.",
 ]
 
 

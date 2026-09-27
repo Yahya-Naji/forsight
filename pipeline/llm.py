@@ -55,8 +55,13 @@ def client() -> AzureOpenAI:
                or os.environ.get("AZURE_OPENAI_API_KEY") or "").strip()
         if not key:
             raise RuntimeError("AZURE_OPENAI_KEY is not set.")
+        # Sections are drafted concurrently, so 429s are expected rather than
+        # exceptional: the deployment's token-per-minute ceiling is shared across
+        # in-flight drafts. The SDK honours Retry-After, so the fix is to let it
+        # wait rather than to serialise the work again.
         _client = AzureOpenAI(api_key=key, azure_endpoint=_endpoint(),
-                              api_version=_api_version(), timeout=300.0, max_retries=3)
+                              api_version=_api_version(), timeout=300.0,
+                              max_retries=8)
     return _client
 
 

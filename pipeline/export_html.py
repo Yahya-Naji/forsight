@@ -15,7 +15,17 @@ TEMPLATE = os.path.join(REPO, "design", "templates", "report.html")
 
 # The model writes both [EV-001] and [EV-021, EV-022]; style every id in either.
 CITE = re.compile(r"\[((?:EV-[A-Z0-9-]+)(?:\s*,\s*EV-[A-Z0-9-]+)*)\]")
-SIG  = re.compile(r"\b(SIG-[A-Z]{2}-\d+|R-[A-Z]{2}-\d+|F-[A-Z]{2}-\d+|TR-[A-Z]{2}-\d+)\b")
+# Figure citations survive in the text next to the rendered image, so they are
+# styled as objects rather than evidence chips.
+FIGREF = re.compile(r"\[\s*(FIG-\d+(?:\s*,\s*FIG-\d+)*)\s*\]")
+SIG  = re.compile(r"\b(SIG-[A-Z]{2}-\d+|R-[A-Z]{2}-\d+|F-[A-Z]{2}-\d+|TR-[A-Z]{2}-\d+"
+                  r"|FC-[A-Z]{2}-\d+|CU-[A-Z]{2}-\d+|FIG-\d+)\b")
+
+# generate.embed_figures emits an image line followed by an italic credit line:
+#   ![describes](url)
+#   *FIG-004 — caption. Publisher date* <document url>
+IMG = re.compile(r"^!\[(?P<alt>[^\]]*)\]\((?P<src>\S+?)\)\s*$")
+FIGCAP = re.compile(r"^\*(?P<id>FIG-\d+)\s+—\s+(?P<body>.*?)\*\s*(?:<(?P<href>\S+)>)?\s*$")
 
 
 def md_to_html(md, known):
@@ -35,6 +45,24 @@ def md_to_html(md, known):
             out.append("</table></div>"); in_tbl = False
         if not s:
             continue
+
+        # A figure and its credit line render as one <figure>, so the caption
+        # stays attached to the image when the page reflows or is printed.
+        m = IMG.match(s)
+        if m:
+            out.append('<figure class="fig"><img loading="lazy" src="%s" alt="%s">'
+                       % (html.escape(m.group("src"), quote=True),
+                          html.escape(m.group("alt"), quote=True)))
+            continue
+        m = FIGCAP.match(s)
+        if m:
+            href = m.group("href") or ""
+            link = (' <a class="figsrc" href="%s" rel="noopener noreferrer" '
+                    'target="_blank">source</a>' % html.escape(href, quote=True)) if href else ""
+            out.append('<figcaption><span class="obj">%s</span> %s%s</figcaption></figure>'
+                       % (m.group("id"), inline(m.group("body"), known), link))
+            continue
+
         if s.startswith("### "): out.append(f"<h4>{inline(s[4:], known)}</h4>")
         elif s.startswith("## "): out.append(f'<h3 id="{s[3:].lower().replace(" ","-")}">{inline(s[3:], known)}</h3>')
         elif s.startswith("# "):  continue
@@ -55,6 +83,8 @@ def inline(t, known):
         title = "" if ok else ' title="cites evidence that does not exist"'
         return f'<span class="{cls}" data-ev="{i}"{title}>{i}</span>'
     t = CITE.sub(cite, t)
+    t = FIGREF.sub(lambda m: " ".join('<span class="obj">%s</span>' % i.strip()
+                                     for i in m.group(1).split(",")), t)
     t = SIG.sub(lambda m: f'<span class="obj">{m.group(1)}</span>', t)
     return t
 
