@@ -8,6 +8,7 @@ on:
   schedule:
     - cron: "17 3 * * *"      # daily 03:17 UTC — Lane A
     - cron: "42 4 * * 0"      # Sundays 04:42 UTC — Lane C
+    - cron: "10 2 * * 2"      # Tuesdays 02:10 UTC — Lane B over the question bank
   workflow_dispatch:
     inputs:
       lane:
@@ -94,3 +95,37 @@ jobs:
       - run: pip install -r pipeline/requirements.txt
       - name: "Lane B: question-driven search"
         run: python pipeline/collect.py --lane b --question-id "${{ github.event.inputs.question_id }}"
+
+  lane-b-questions:
+    # Research starts from a strategic question, so Lane B walks the question
+    # bank rather than sweeping. GDELT wants >=5s between calls and answers 429
+    # generously, so the questions run in series inside one job.
+    if: github.event.schedule == '10 2 * * 2' || github.event.inputs.lane == 'b'
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+          cache-dependency-path: pipeline/requirements.txt
+      - run: pip install -r pipeline/requirements.txt
+      - name: "Lane B: walk the question bank"
+        working-directory: pipeline
+        run: |
+          set -e
+          QIDS=$(python - <<'PY'
+          import sys; sys.path.insert(0,'.')
+          from config import db
+          only = "${{ github.event.inputs.question_id }}".strip()
+          rows = db().table("questions").select("id").order("id").execute().data
+          ids = [only] if only else [r["id"] for r in rows]
+          print(" ".join(ids))
+          PY
+          )
+          echo "questions: $QIDS"
+          for q in $QIDS; do
+            echo "── $q ──"
+            python collect.py --lane b --question-id "$q" --limit 6 || echo "  ($q failed, continuing)"
+          done

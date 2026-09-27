@@ -379,10 +379,22 @@ def main():
             "recall": scoped, "ours_text": ours_m, "benchmark_text": bench_m,
             "chain_completeness": chain, "novel": novel,
             "matches": {k: [m.model_dump() for m in v] for k, v in results.items()}}
+    # Persist so the console can render it: a scorecard on someone's disk
+    # convinces nobody.
+    try:
+        sb.table("scorecards").insert({
+            "pillar": a.pillar, "report_id": report["id"],
+            "benchmark": a.benchmark, "benchmark_label": os.path.basename(a.benchmark),
+            "recall": scoped, "ours_text": ours_m, "benchmark_text": bench_m,
+            "chain_completeness": chain, "novel": novel}).execute()
+        print("\n  scorecard stored")
+    except Exception as exc:
+        print("\n  (could not store scorecard: %s)" % exc)
+
     if a.json:
         with open(a.json, "w", encoding="utf-8") as fh:
             json.dump(card, fh, indent=2)
-        print("\n  scorecard written to %s" % a.json)
+        print("  scorecard written to %s" % a.json)
 
 
 if __name__ == "__main__":
