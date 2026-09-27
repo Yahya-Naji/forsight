@@ -195,10 +195,31 @@ A reworded assertion with no source fails again for the same reason."""
 # withholds well-formed sections under three, so the budget is a flag.
 DEFAULT_RETRIES = 3
 
-# Sections whose subject is the evidence base itself. "Confirming this would
-# require data on exploitation rates" is a statement about what is missing —
-# demanding a citation for it is asking the writer to cite an absence.
-EPISTEMIC_SECTIONS = {"limits"}
+# Sections whose subject is NOT the world.
+#
+# "Confirming this would require data on exploitation rates" is a statement
+# about what is missing; demanding a citation for it asks the writer to cite an
+# absence. The same holds for four other kinds of section, and treating them as
+# evidence-bearing withheld seven of twenty-three on the first full run:
+#
+#   the document itself   purpose, scope, the question the report answers
+#   the method            how evidence was tiered, classed and gated
+#   what is unknown       the critical uncertainties
+#   hypothetical futures  a scenario describes a world that does not exist, so
+#                         its paragraphs cannot cite evidence for it
+#   decision reasoning    why one decision comes before another
+#
+# The exemption is not silent: verify.py counts these sentences separately and
+# the scorecard reports how many were exempt, so the headline "0 unsourced
+# assertions" is still read against a stated denominator.
+EPISTEMIC_SECTIONS = {
+    "limits", "purpose_scope", "methodology", "question_architecture",
+    "uncertainties", "scenarios", "decisions",
+    # The stress test reasons over futures that do not exist, and the
+    # opportunity register reports that it is empty — both were withheld for
+    # describing exactly what they are for.
+    "stress_test", "opportunities",
+}
 
 BANNED_OPENERS = (
     "enhanced", "in today", "it is imperative", "organisations must",
@@ -249,21 +270,28 @@ def density_failures(body_md: str, sec) -> list:
     So citation density has a floor wherever evidence was supplied. A section can
     still say little, but it cannot make claims anonymously.
     """
-    if "evidence" not in (sec.get("inputs") or []):
+    inputs = sec.get("inputs") or []
+    if "evidence" not in inputs:
         return []                      # actions and similar carry no citations
     sentences = verify.sentences_of(body_md)
     assertive = [x for x in sentences if verify.ASSERTIVE.search(x)]
-    cited = [x for x in sentences
-             if verify.CITATION.search(x) or verify.OBJECT_REF.search(x)]
+    # A section HANDED evidence must cite evidence. Counting any object
+    # reference let the horizon-scanning section satisfy the floor with ten
+    # SIG- ids and zero [EV-] citations, from 63 evidence rows — derived objects
+    # are a step further from the source, and the whole claim of this system is
+    # that a sentence can be walked back to a quote span.
+    cited = [x for x in sentences if ANY_EV.search(x)]
     if len(assertive) < MIN_SENTENCES_PER_CITATION:
         return []
     need = max(1, len(assertive) // MIN_SENTENCES_PER_CITATION)
     if len(cited) >= need:
         return []
-    return ["This section carries %d citation(s) across %d assertive sentences; it "
-            "needs at least %d. Do not answer a citation problem by removing the "
-            "citation — cite the id that does support the sentence, narrow the "
-            "sentence to what a quote states, or cut the claim entirely."
+    return ["This section carries %d EVIDENCE citation(s) across %d assertive "
+            "sentences; it needs at least %d. You were given evidence rows — cite "
+            "them as [EV-xxx]. A SIG-, F- or R- id is a derived object, not a "
+            "source, and does not satisfy this. Do not answer a citation problem "
+            "by removing the citation: cite the evidence that supports the "
+            "sentence, narrow the sentence to what a quote states, or cut it."
             % (len(cited), len(assertive), need)]
 
 
@@ -340,8 +368,14 @@ SECTION_CACHE = os.path.join(
     os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "out", ".cache", "sections")
 
 
+# Bump when a verification check changes. The cache key is the prompt plus this,
+# because a stricter check must not be satisfied by a draft that was only ever
+# judged against the looser one.
+CHECKS_VERSION = "2"
+
+
 def _cache_key(prompt: str) -> str:
-    return hashlib.sha256(prompt.encode("utf-8")).hexdigest()[:32]
+    return hashlib.sha256((CHECKS_VERSION + "\x00" + prompt).encode("utf-8")).hexdigest()[:32]
 
 
 def cache_get(prompt: str):
@@ -500,6 +534,56 @@ def fetch_inputs(sb, pillar, wanted, section_key, brief=None):
             f.pop("informative", None)
             f.pop("reachable", None)
         take("figures", figs)
+    # ---- the back half of the methodology (report §9-§21) ------------------
+    # These are global rather than per-pillar in the schema, so they are taken
+    # whole; the relevance filter still scopes them against a brief.
+    if "trends" in wanted:
+        take("trends", rows_for("trends", "id,name,statement,direction,horizon"))
+    if "drivers" in wanted:
+        take("drivers", rows_for("drivers", "id,name,description"))
+    if "cross_impacts" in wanted:
+        take("cross_impacts", sb.table("cross_impacts")
+             .select("id,from_trend,to_trend,statement,severity").execute().data)
+    if "scenarios" in wanted:
+        scen = sb.table("scenarios").select(
+            "id,name,one_sentence,dimensions,horizon").order("id").execute().data
+        for sc in scen:
+            sc["driven_by"] = [r["uncertainty_id"] for r in
+                               sb.table("scenario_uncertainties").select("uncertainty_id")
+                               .eq("scenario_id", sc["id"]).execute().data]
+        take("scenarios", scen)
+    if "implications" in wanted:
+        take("implications", rows_for("implications", "id,actor,statement,finding_id"))
+    if "opportunities" in wanted:
+        take("opportunities", rows_for("opportunities",
+             "id,statement,attractiveness,feasibility,score"))
+    if "options" in wanted:
+        take("options", sb.table("options")
+             .select("id,name,description,is_working_hypothesis").order("id").execute().data)
+    if "stress_tests" in wanted:
+        take("stress_tests", sb.table("stress_tests")
+             .select("option_id,scenario_id,result,note").execute().data, has_id=False)
+    if "initiatives" in wanted:
+        take("initiatives", sb.table("initiatives")
+             .select("id,name,objective,class,owner,horizon").order("id").execute().data)
+    if "actions_planned" in wanted:
+        take("actions_planned", sb.table("actions")
+             .select("id,initiative_id,statement,owner,horizon,sequence")
+             .order("sequence").execute().data)
+    if "decisions" in wanted:
+        take("decisions", sb.table("decision_requirements")
+             .select("id,title,decision,why_first,data_needed,priority")
+             .order("priority").execute().data)
+    if "questions" in wanted:
+        take("questions", rows_for("questions", "id,text,stage,topic_id"))
+    if "topics" in wanted:
+        take("topics", rows_for("topics", "id,name,description"))
+    if "sources" in wanted:
+        take("sources", sb.table("source_registry")
+             .select("id,tier,publisher,method,notes").order("id").execute().data)
+    if "gaps" in wanted:
+        take("gaps", rows_for("research_gaps", "id,gap,raised_by"), has_id=False)
+
     if "links" in wanted:
         take("links", sb.table("links").select("*").execute().data, has_id=False)
     if "gates" in wanted:

@@ -4,7 +4,7 @@
 // the checks that can run synchronously while a reader waits.
 
 export const OBJECT_REF =
-  /\b(EV-[A-Z0-9-]+|SIG-[A-Z]{2}-\d+|F-[A-Z]{2}-\d+|R-[A-Z]{2}-\d+|TR-[A-Z]{2}-\d+|CU-[A-Z]{2}-\d+|FC-[A-Z]{2}-\d+)\b/g;
+  /\b(EV-[A-Z0-9-]+|SIG-[A-Z]{2}-\d+|F-[A-Z]{2}-\d+|R-[A-Z]{2}-\d+|TR-[A-Z]{2}-\d+|CU-[A-Z]{2}-\d+|FC-[A-Z]{2}-\d+|FIG-\d+|S\d{1,2}|OPT-[A-Z]|IMP-[A-Z]{3}-\d+|DRV-\d+|CI-\d+|INIT-\d+|ACT-\d+|PDC-\d+|IND-[A-Z]{2}-\d+|O\d{1,2}|[A-Z]{2}-T\d+|[A-Z]{2}-\d{2})\b/g;
 
 const ASSERTIVE =
   /\b(is|are|was|were|has|have|had|shows?|showed|demonstrat(?:es?|ed)|confirms?|confirmed|proves?|proved|increas(?:es?|ed)|decreas(?:es?|ed)|reduc(?:es?|ed)|requires?|required|creat(?:es?|ed)|caus(?:es?|ed)|operates?|operated|target(?:s|ed)|breach(?:es|ed)|compromis(?:es?|ed)|exploit(?:s|ed)|deploys?|deployed|maintains?|maintained|holds?|held|grew|rose|fell|reached|remains?|remained|accounts? for|led to|resulted in)\b/i;

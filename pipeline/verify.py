@@ -47,7 +47,14 @@ CITATION = re.compile(
 # evidence row was supplied is what drove the model to invent ids.
 OBJECT_REF = re.compile(
     r"\b(EV-[A-Z0-9-]+|SIG-[A-Z]{2}-\d+|F-[A-Z]{2}-\d+|R-[A-Z]{2}-\d+"
-    r"|TR-[A-Z]{2}-\d+|CU-[A-Z]{2}-\d+|FC-[A-Z]{2}-\d+|FIG-\d+)\b")
+    r"|TR-[A-Z]{2}-\d+|CU-[A-Z]{2}-\d+|FC-[A-Z]{2}-\d+|FIG-\d+"
+    # The back half of the methodology (report §9-§21). Without these an
+    # object type the pipeline admitted by rule reads as an uncited
+    # assertion: "Option OPT-A is fragile under S2" was scored as a bare
+    # claim, and eleven sections were withheld for citing the graph.
+    r"|S\d{1,2}|OPT-[A-Z]|IMP-[A-Z]{3}-\d+|DRV-\d+|CI-\d+"
+    r"|INIT-\d+|ACT-\d+|PDC-\d+|IND-[A-Z]{2}-\d+|O\d{1,2}"
+    r"|[A-Z]{2}-T\d+|[A-Z]{2}-\d{2})\b")
 
 # A sentence that states a fact but carries no citation. Headings, table rows,
 # list scaffolding and hedged/meta sentences are not assertions.
@@ -312,6 +319,29 @@ def load_graph(sb, pillar) -> Dict[str, dict]:
     # decoration, or one that no longer loads, must fail citation like an
     # invented id would — a brief that renders a broken image has published a
     # citation it cannot honour.
+    # Objects admitted by strategize.py. Some are global rather than per-pillar,
+    # which is how the schema models them — a scenario is a future for the whole
+    # analysis, not for one pillar.
+    def plain(table, cols, kind, label):
+        try:
+            for row in sb.table(table).select(cols).execute().data:
+                graph[row["id"]] = dict(row, kind=kind, statement=row.get(label) or "")
+        except Exception:
+            pass                       # table absent in an older database
+
+    plain("scenarios", "id,name,one_sentence", "scenario", "one_sentence")
+    plain("options", "id,name,description", "option", "description")
+    plain("drivers", "id,name,description", "driver", "description")
+    plain("cross_impacts", "id,statement", "cross_impact", "statement")
+    plain("initiatives", "id,name,objective", "initiative", "objective")
+    plain("actions", "id,statement", "action", "statement")
+    plain("decision_requirements", "id,title,decision", "decision", "decision")
+    plain("indicators", "id,watch,threshold", "indicator", "watch")
+    plain("opportunities", "id,statement", "opportunity", "statement")
+    plain("implications", "id,statement", "implication", "statement")
+    plain("questions", "id,text", "question", "text")
+    plain("topics", "id,name", "topic", "name")
+
     for row in scoped("figures", "id,describes,caption,kind,informative,reachable"):
         if row.get("informative") and row.get("reachable"):
             graph[row["id"]] = dict(row, kind="figure",
@@ -533,7 +563,16 @@ def check_entailment(sentences, graph, batch_size=20, fast=False):
 # audit that does not know which section a sentence came from reported three
 # "unsourced assertions" for sentences the pipeline deliberately allowed —
 # penalising the brief for being honest about its own gaps.
-EPISTEMIC_SECTIONS = {"limits"}
+# Mirrors generate.EPISTEMIC_SECTIONS — sections whose subject is the document,
+# the method, what is unknown, a hypothetical future, or a decision rationale.
+EPISTEMIC_SECTIONS = {
+    "limits", "purpose_scope", "methodology", "question_architecture",
+    "uncertainties", "scenarios", "decisions",
+    # The stress test reasons over futures that do not exist, and the
+    # opportunity register reports that it is empty — both were withheld for
+    # describing exactly what they are for.
+    "stress_test", "opportunities",
+}
 
 
 def split_sections(body: str, template_sections) -> List[tuple]:
