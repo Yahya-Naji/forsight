@@ -1,24 +1,15 @@
 import { supabase } from "@/lib/supabase";
 import { PILLAR_LABEL } from "@/components/chips";
 import BriefChat from "@/components/BriefChat";
+import { STAGES as ENGINE_STAGES } from "@/lib/engine";
 
 export const revalidate = 0;
 export const dynamic = "force-dynamic";
 
-// The first element is the contract with the Python pipeline: update_run()
-// writes one of these keys into pipeline_runs.stage and the checklist lights
-// up to it.
-const STAGES = [
-  ["collect", "Collect", "documents from lanes A, B, C with source tiers"],
-  ["gate1", "Gate 1 · relevance", "cheap typed triage — irrelevant documents stop here"],
-  ["extract", "Extract", "LLM emits claims, schema-checked"],
-  ["gate2", "Gate 2 · quote check", "claims must be entailed by their verbatim quote"],
-  ["rules", "Rules & gates", "class, confidence, signal strength, UAE guard"],
-  ["synthesize", "Synthesize", "signals, findings and risks admitted by rule"],
-  ["forecast", "Forecast", "outlook with computed plausibility and a falsifier"],
-  ["generate", "Generate", "section-scoped inputs, per-claim citations"],
-  ["verify", "Verify", "citations resolve · gates honoured · entailment"],
-] as const;
+// The stage list lives in lib/engine.ts — the creation tab and the engine tab
+// were each carrying their own copy of the same pipeline description, and they
+// had already drifted. STAGES is the contract with Python's update_run().
+const STAGES = ENGINE_STAGES.map((s) => [s.key, s.name, s.sub] as const);
 
 const RUN_STATUS: Record<string, { text: string; fg: string; bg: string; bd: string }> = {
   QUEUED:  { text: "Queued",  fg: "#C6CFF2", bg: "rgba(198,207,242,.10)", bd: "rgba(198,207,242,.30)" },

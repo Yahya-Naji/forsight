@@ -7,6 +7,9 @@
   --green-ink:#17693A; --green-bg:#EFF9F2; --green-line:#CBE8D5; --green-chip:#DDF2E5;
   --uae:#5B4A9E; --uae-bg:#EEE9FB; --global:#0F5C6E; --global-bg:#E2F1F5;
   --radius:14px;
+  /* Ids, rule names and counts are read as tokens, not prose — they want a face
+     where a zero cannot be an O and columns of digits line up. */
+  --mono:'JetBrains Mono',ui-monospace,SFMono-Regular,Menlo,monospace;
 }
 *{box-sizing:border-box}
 body{margin:0;font-family:'Instrument Sans',system-ui,sans-serif;background:var(--paper);color:var(--ink)}
