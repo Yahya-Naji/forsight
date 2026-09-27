@@ -44,7 +44,8 @@ class ForecastProposal(BaseModel):
                            description="a specific, checkable future condition")
     horizon: str = Field(description="H0_3 | H3_5 | H5_10 | H7_PLUS")
     env_layer: str = Field(description="UAE | REGIONAL | GLOBAL")
-    signal_ids: List[str] = Field(min_length=1)
+    signal_ids: List[str] = Field(min_length=1,
+        description="ids of supporting signals, e.g. SIG-CS-04")
     evidence_ids: List[str] = Field(default_factory=list)
     uncertainty_ids: List[str] = Field(default_factory=list)
     rationale: str = Field(min_length=20, max_length=700)
@@ -200,16 +201,37 @@ def _gap(sb, pillar, text):
     print("  GAP  %s" % text[:96])
 
 
+def _signal_lookup(sb, pillar: str) -> Dict[str, str]:
+    """Signals addressable by id OR statement.
+
+    The model references signals however it saw them in the prompt — usually the
+    id, sometimes the statement. Matching one form only silently rejects sound
+    forecasts, which is indistinguishable from the forecaster having nothing to
+    say.
+    """
+    lookup = {}
+    for row in sb.table("signals").select("id,statement").eq("pillar", pillar).execute().data:
+        lookup[row["id"]] = row["id"]
+        lookup[row["statement"]] = row["id"]
+        lookup[row["statement"].strip().rstrip(".")] = row["id"]
+    return lookup
+
+
 def admit(sb, pillar: str, proposals: List[ForecastProposal], uae_gate_open: bool) -> int:
-    valid_sig = {s["id"] for s in sb.table("signals").select("id").eq("pillar", pillar).execute().data}
+    sig_lookup = _signal_lookup(sb, pillar)
     valid_ev = {e["id"] for e in sb.table("evidence").select("id").eq("pillar", pillar).execute().data}
     valid_unc = {u["id"] for u in sb.table("uncertainties").select("id").eq("pillar", pillar).execute().data}
     strength_of = {s["id"]: s["strength"] for s in
                    sb.table("signals").select("id,strength").eq("pillar", pillar).execute().data}
+    if not sig_lookup:
+        print("  no signals in the graph — nothing to forecast from")
 
     admitted = 0
     for p in proposals:
-        sigs = [s for s in dict.fromkeys(p.signal_ids) if s in valid_sig]
+        sigs = list(dict.fromkeys(
+            sig_lookup.get(s) or sig_lookup.get(s.strip().rstrip("."))
+            for s in p.signal_ids
+            if sig_lookup.get(s) or sig_lookup.get(s.strip().rstrip("."))))
         if len(sigs) < MIN_SIGNALS_PER_FORECAST:
             _gap(sb, pillar, "Forecast rejected — no admitted signal behind it: %s" % p.statement)
             continue
