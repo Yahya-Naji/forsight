@@ -1,64 +1,77 @@
 "use client";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { cn } from "@/lib/utils";
+import { Button } from "@/components/ui/button";
+import { PILLAR_LABEL } from "@/components/chips";
 
-const PILLARS = [
-  ["CYBERSECURITY", "Cybersecurity"], ["AI", "AI"],
-  ["ELECTRONIC_WARFARE", "Electronic Warfare"], ["PROCUREMENT", "Procurement"],
+// Navigation follows the pipeline, not the database: a reader moves from where
+// evidence comes from, through what it became, to what was written and how it
+// scored. Ordering these by table name would put Evidence next to Engine and
+// hide the argument the console is making.
+const NAV = [
+  { href: "/console", label: "Overview" },
+  { href: "/pillars/CYBERSECURITY", label: "Pillars", match: "/pillars", children: true },
+  { href: "/sources", label: "Sources" },
+  { href: "/evidence", label: "Evidence" },
+  { href: "/generate", label: "Generate" },
+  { href: "/engine", label: "Engine" },
+  { href: "/reports", label: "Reports" },
+  { href: "/refusals", label: "Refusals" },
+  { href: "/scorecard", label: "Scorecard" },
 ] as const;
 
-function Item({ href, label, active }: { href: string; label: string; active: boolean }) {
-  return (
-    <Link href={href} style={{
-      display: "flex", alignItems: "center", gap: 10, padding: "9px 10px", borderRadius: 10,
-      background: active ? "var(--accent-wash)" : "transparent",
-      fontWeight: active ? 600 : 400, fontSize: 13.5, color: active ? "var(--ink)" : "var(--muted)",
-    }}>
-      <span style={{ width: 7, height: 7, borderRadius: 4, background: active ? "var(--accent)" : "#C9D0E4" }} />
-      {label}
-    </Link>
-  );
-}
+const PILLARS = Object.keys(PILLAR_LABEL);
 
 export default function Sidebar({ onAsk }: { onAsk?: () => void }) {
   const path = usePathname();
+  const active = (href: string, match?: string) =>
+    match ? path.startsWith(match) : path === href;
+
   return (
-    <aside style={{
-      width: 228, flexShrink: 0, background: "var(--card)", borderRight: "1px solid var(--line)",
-      display: "flex", flexDirection: "column", padding: "22px 14px", position: "sticky", top: 0, height: "100vh",
-    }}>
-      <div className="display" style={{ fontWeight: 700, fontSize: 17, letterSpacing: .4, padding: "0 10px 20px" }}>
-        FORESIGHT<span style={{ color: "var(--accent)" }}>.</span>
+    <aside className="sticky top-0 flex h-screen w-[228px] shrink-0 flex-col
+                      border-r border-line bg-card px-3.5 py-[22px]">
+      <div className="display px-2.5 pb-5 text-[17px] font-bold tracking-[.4px]">
+        FORESIGHT<span className="text-accent">.</span>
       </div>
-      <nav style={{ display: "flex", flexDirection: "column", gap: 2 }}>
-        <Item href="/console" label="Overview" active={path === "/console"} />
-        <Item href={`/pillars/CYBERSECURITY`} label="Pillars" active={path.startsWith("/pillars")} />
-        <div style={{ display: "flex", flexDirection: "column", paddingLeft: 26, fontSize: 12.5 }}>
-          {PILLARS.map(([key, name]) => (
-            <Link key={key} href={`/pillars/${key}`} style={{
-              padding: "5px 8px",
-              color: path === `/pillars/${key}` ? "var(--ink)" : "#7A8098",
-              fontWeight: path === `/pillars/${key}` ? 600 : 400,
-            }}>{name}</Link>
-          ))}
-        </div>
-        <Item href="/sources" label="Sources" active={path.startsWith("/sources")} />
-        <Item href="/evidence" label="Evidence" active={path.startsWith("/evidence")} />
-        <Item href="/generate" label="Generate" active={path.startsWith("/generate")} />
-        <Item href="/engine" label="Engine" active={path.startsWith("/engine")} />
-        <Item href="/reports" label="Reports" active={path.startsWith("/reports")} />
-        <Item href="/refusals" label="Refusals" active={path.startsWith("/refusals")} />
-        <Item href="/scorecard" label="Scorecard" active={path.startsWith("/scorecard")} />
+
+      <nav className="flex flex-col gap-0.5">
+        {NAV.map(item => (
+          <div key={item.href}>
+            <Link href={item.href} className={cn(
+              "flex items-center gap-2.5 rounded-[10px] px-2.5 py-[9px] text-base transition-colors",
+              active(item.href, (item as any).match)
+                ? "bg-accent-wash font-semibold text-ink"
+                : "text-muted hover:bg-line-soft hover:text-ink")}>
+              <span className={cn("h-[7px] w-[7px] rounded-full",
+                active(item.href, (item as any).match) ? "bg-accent" : "bg-[#C9D0E4]")} />
+              {item.label}
+            </Link>
+
+            {(item as any).children && (
+              <div className="flex flex-col pl-[26px] text-sm">
+                {PILLARS.map(p => (
+                  <Link key={p} href={`/pillars/${p}`} className={cn(
+                    "px-2 py-[5px] transition-colors hover:text-ink",
+                    path === `/pillars/${p}` ? "font-semibold text-ink" : "text-[#7A8098]")}>
+                    {PILLAR_LABEL[p]}
+                  </Link>
+                ))}
+              </div>
+            )}
+          </div>
+        ))}
       </nav>
-      <div style={{ flexGrow: 1 }} />
-      <button aria-label="Ask the graph" onClick={onAsk} style={{
-        display: "flex", alignItems: "center", justifyContent: "space-between", padding: "11px 14px",
-        borderRadius: 999, border: "1px solid #E0E5F2", background: "#F8F9FD",
-        fontFamily: "inherit", fontSize: 13, color: "#3C4258", cursor: "pointer",
-      }}>
-        <span style={{ fontWeight: 600 }}>Ask the graph</span>
-        <span style={{ fontSize: 11, color: "var(--ghost)", background: "#fff", border: "1px solid var(--line)", borderRadius: 6, padding: "2px 7px" }}>⌘K</span>
-      </button>
+
+      <div className="grow" />
+
+      <Button variant="quiet" onClick={onAsk} aria-label="Ask the graph"
+              className="h-auto w-full justify-between px-3.5 py-[11px] text-[13px] font-normal">
+        <span className="font-semibold">Ask the graph</span>
+        <span className="rounded-[6px] border border-line bg-card px-[7px] py-0.5 text-[11px] text-ghost">
+          ⌘K
+        </span>
+      </Button>
     </aside>
   );
 }
