@@ -31,7 +31,7 @@ export default function Sidebar({ onAsk }: { onAsk?: () => void }) {
         FORESIGHT<span style={{ color: "var(--accent)" }}>.</span>
       </div>
       <nav style={{ display: "flex", flexDirection: "column", gap: 2 }}>
-        <Item href="/console" label="Overview" active={path === "/"} />
+        <Item href="/console" label="Overview" active={path === "/console"} />
         <Item href={`/pillars/CYBERSECURITY`} label="Pillars" active={path.startsWith("/pillars")} />
         <div style={{ display: "flex", flexDirection: "column", paddingLeft: 26, fontSize: 12.5 }}>
           {PILLARS.map(([key, name]) => (
@@ -45,6 +45,8 @@ export default function Sidebar({ onAsk }: { onAsk?: () => void }) {
         <Item href="/evidence" label="Evidence" active={path.startsWith("/evidence")} />
         <Item href="/generate" label="Generate" active={path.startsWith("/generate")} />
         <Item href="/reports" label="Reports" active={path.startsWith("/reports")} />
+        <Item href="/refusals" label="Refusals" active={path.startsWith("/refusals")} />
+        <Item href="/scorecard" label="Scorecard" active={path.startsWith("/scorecard")} />
       </nav>
       <div style={{ flexGrow: 1 }} />
       <button aria-label="Ask the graph" onClick={onAsk} style={{
