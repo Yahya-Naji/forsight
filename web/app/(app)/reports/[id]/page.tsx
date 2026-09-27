@@ -1,7 +1,7 @@
-import { supabase } from "../../../lib/supabase";
+import { supabase } from "@/lib/supabase";
 import ReactMarkdown from "react-markdown";
-import { label } from "../../../components/chips";
-import ReportChat from "../../../components/ReportChat";
+import { label } from "@/components/chips";
+import ReportChat from "@/components/ReportChat";
 
 export const revalidate = 0;
 export const dynamic = "force-dynamic";

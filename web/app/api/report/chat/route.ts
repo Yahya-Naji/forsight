@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
-import { supabaseAdmin, hasServiceKey } from "../../../../lib/supabase-admin";
-import { complete, hasModel } from "../../../../lib/azure";
-import { checkPassage, OBJECT_REF } from "../../../../lib/verify";
+import { supabaseAdmin, hasServiceKey } from "@/lib/supabase-admin";
+import { complete, hasModel } from "@/lib/azure";
+import { checkPassage, OBJECT_REF } from "@/lib/verify";
 
 // Conversation over a highlighted passage. Same constraints as generation: the
 // assistant answers only from the graph, cites by id, and may propose a rewrite

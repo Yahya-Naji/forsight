@@ -1,97 +1,175 @@
 import Link from "next/link";
-import { supabase } from "../lib/supabase";
-import GateCard from "../components/GateCard";
-import SignalMeter from "../components/SignalMeter";
-import { PILLAR_LABEL } from "../components/chips";
+import { supabase } from "@/lib/supabase";
+import Skyline from "@/components/Skyline";
 
 export const revalidate = 0;
 export const dynamic = "force-dynamic";
 
-export default async function Overview() {
-  const [ev, docs, srcs, gates, signals, reports, recentDocs] = await Promise.all([
-    supabase.from("evidence").select("id", { count: "exact", head: true }),
-    supabase.from("documents").select("id", { count: "exact", head: true }),
-    supabase.from("source_registry").select("id", { count: "exact", head: true }),
-    supabase.from("validation_gates").select("*").order("id"),
-    supabase.from("signals").select("*").in("strength", ["STRONG", "STRONG_EMERGING", "EMERGING"]).limit(5),
-    supabase.from("reports").select("id,title,status,created_at").order("created_at", { ascending: false }).limit(5),
-    supabase.from("documents").select("title,retrieved_at,registry_id,source_registry(publisher,tier)").order("retrieved_at", { ascending: false }).limit(8),
+// The chain on the right is assembled from a real row. A landing page that
+// mocks the product's central claim would be the one dishonest surface in a
+// system built to be checkable.
+async function chain() {
+  const { data: ev } = await supabase
+    .from("evidence")
+    .select("id,claim,quote_span,class,env_layer")
+    .in("class", ["A", "B"]).not("quote_span", "is", null)
+    .order("id").limit(1);
+  const e = ev?.[0];
+  if (!e) return null;
+
+  const { data: src } = await supabase
+    .from("evidence_sources").select("documents(title,url,published_on,registry_id)")
+    .eq("evidence_id", e.id).limit(1);
+  const doc: any = src?.[0]?.documents;
+  const { data: reg } = doc?.registry_id
+    ? await supabase.from("source_registry").select("publisher,tier").eq("id", doc.registry_id).single()
+    : { data: null };
+
+  return { e, doc, reg };
+}
+
+export default async function Landing() {
+  const [c, counts, gates] = await Promise.all([
+    chain(),
+    (async () => {
+      const [d, s, g] = await Promise.all([
+        supabase.from("documents").select("id", { count: "exact", head: true }),
+        supabase.from("source_registry").select("id", { count: "exact", head: true }),
+        supabase.from("evidence").select("id", { count: "exact", head: true }),
+      ]);
+      return { docs: d.count ?? 0, sources: s.count ?? 0, evidence: g.count ?? 0 };
+    })(),
+    supabase.from("validation_gates").select("id", { count: "exact", head: true }).eq("status", "OPEN"),
   ]);
-  const openGates = (gates.data ?? []).filter(g => g.status === "OPEN");
 
   return (
-    <div style={{ display: "flex", flexDirection: "column", gap: 20 }}>
-      <section className="aurora" style={{ padding: "34px 38px 26px" }}>
-        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 24, flexWrap: "wrap" }}>
-          <div>
-            <div className="kicker" style={{ color: "#93A7E8" }}>Strategic foresight · UAE defence</div>
-            <h1 className="display" style={{ fontWeight: 700, fontSize: 40, margin: "10px 0 0", letterSpacing: -0.5 }}>Intelligence, with receipts.</h1>
-            <div style={{ fontSize: 14, color: "#B8C4EE", marginTop: 8 }}>Every claim below traces to a source. Nothing here is generated from a prompt.</div>
+    <div style={{ minHeight: "100vh", background: "var(--aurora)", color: "#fff", position: "relative", overflow: "hidden" }}>
+      <Skyline />
+
+      <div style={{ position: "relative", zIndex: 2, maxWidth: 1240, margin: "0 auto", padding: "0 28px" }}>
+        <header className="row" style={{ justifyContent: "space-between", padding: "22px 0" }}>
+          <div className="display" style={{ fontWeight: 700, fontSize: 17, letterSpacing: -0.3 }}>
+            FORESIGHT<span style={{ color: "var(--accent)" }}>.</span>
           </div>
-          <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
-            {[["evidence", ev.count], ["documents", docs.count], ["sources", srcs.count]].map(([k, v]) => (
-              <div key={String(k)} style={{ textAlign: "center", background: "rgba(255,255,255,.06)", border: "1px solid rgba(255,255,255,.12)", borderRadius: 14, padding: "14px 22px" }}>
-                <div className="display" style={{ fontWeight: 700, fontSize: 28 }}>{v ?? 0}</div>
-                <div style={{ fontSize: 11, color: "#9FB0E6", marginTop: 2 }}>{k}</div>
+          <nav className="row" style={{ gap: 26, fontSize: 13.5 }}>
+            <Link href="/reports" style={{ color: "#C6CFF2", textDecoration: "none" }}>Sample brief</Link>
+            <Link href="/evidence" style={{ color: "#C6CFF2", textDecoration: "none" }}>Evidence</Link>
+            <Link href="/console" className="pill-btn" style={{ textDecoration: "none", padding: "9px 17px" }}>
+              Open the console
+            </Link>
+          </nav>
+        </header>
+
+        <div style={{ display: "grid", gridTemplateColumns: "minmax(0,1fr) minmax(0,1fr)", gap: 48, alignItems: "center", minHeight: "calc(100vh - 110px)", paddingBottom: 60 }}>
+          {/* ── the claim ── */}
+          <div style={{ border: "1px solid rgba(91,124,240,.55)", borderRadius: 16, padding: "38px 34px", background: "rgba(10,15,46,.42)", backdropFilter: "blur(3px)" }}>
+            <div style={{ fontFamily: "'Space Grotesk'", fontSize: 11, letterSpacing: 2, color: "#8FA3E8", textTransform: "uppercase" }}>
+              Strategic foresight · UAE defence
+            </div>
+            <h1 className="display" style={{ fontSize: 46, lineHeight: 1.08, letterSpacing: -1.1, margin: "18px 0 0", fontWeight: 700 }}>
+              Every sentence can prove where it came from.
+            </h1>
+            <p style={{ marginTop: 18, fontSize: 15, lineHeight: 1.62, color: "#C6CFF2", maxWidth: "46ch" }}>
+              Briefs assembled from a governed evidence graph — {counts.sources} tiered sources,
+              refreshed daily. Follow any claim down to the exact words of its source.
+            </p>
+
+            <div className="row" style={{ gap: 14, marginTop: 26 }}>
+              <Link href="/console" className="pill-btn" style={{ textDecoration: "none" }}>Open the console</Link>
+              <Link href="/reports" style={{ color: "#fff", textDecoration: "none", fontSize: 13.5, fontWeight: 600 }}>
+                Read the sample brief →
+              </Link>
+            </div>
+
+            <div style={{ marginTop: 28, border: "1px solid rgba(255,183,77,.34)", background: "rgba(255,183,77,.07)", borderRadius: 12, padding: "14px 16px" }}>
+              <div style={{ fontFamily: "'Space Grotesk'", fontSize: 10.5, letterSpacing: 1.6, color: "#FFC96B", textTransform: "uppercase" }}>
+                And when the evidence doesn&rsquo;t exist
               </div>
-            ))}
-            <div style={{ textAlign: "center", background: "rgba(255,183,77,.12)", border: "1px solid rgba(255,183,77,.35)", borderRadius: 14, padding: "14px 22px" }}>
-              <div className="display" style={{ fontWeight: 700, fontSize: 28, color: "#FFC96B" }}>{openGates.length}</div>
-              <div style={{ fontSize: 11, color: "#E8BE85", marginTop: 2 }}>gates open</div>
+              <p style={{ marginTop: 7, fontSize: 13, lineHeight: 1.55, color: "#E4E9FA" }}>
+                The brief prints <b>&ldquo;Customer Validation Required&rdquo;</b> instead of a guess.
+                A rule blocks the claim — no prompt, no exceptions.
+                {(gates.count ?? 0) > 0 && <> {gates.count} gate{(gates.count ?? 0) > 1 ? "s are" : " is"} open right now.</>}
+              </p>
             </div>
           </div>
-        </div>
-        <div style={{ marginTop: 24, display: "flex", alignItems: "center", gap: 14, background: "rgba(10,14,40,.55)", border: "1px solid rgba(255,255,255,.1)", borderRadius: 12, padding: "10px 16px", overflow: "hidden" }}>
-          <span style={{ display: "flex", alignItems: "center", gap: 7, color: "#7EE0A9", fontWeight: 600, fontSize: 12.5, flexShrink: 0 }}>
-            <span style={{ width: 7, height: 7, borderRadius: 4, background: "#4ADE80" }} />DAILY RUN
-          </span>
-          <div className="ticker">
-            <div className="ticker-track">
-              {(recentDocs.data ?? []).map((d: any, i: number) => (
-                <span key={i}>{d.source_registry?.publisher ?? "unknown"} · <b style={{ color: "#fff" }}>Tier {d.source_registry?.tier ?? "?"}</b></span>
-              ))}
-            </div>
-          </div>
-        </div>
-      </section>
 
-      <div style={{ display: "grid", gridTemplateColumns: "1.1fr 1.4fr", gap: 20 }}>
-        <section style={{ display: "flex", flexDirection: "column", gap: 12 }}>
-          <div className="row" style={{ justifyContent: "space-between" }}>
-            <h2 className="section-title">Validation gates</h2>
+          {/* ── the proof ── */}
+          <div style={{ display: "flex", flexDirection: "column", gap: 0 }}>
+            {c ? (
+              <>
+                <Card label="A sentence from the brief">
+                  <p style={{ fontSize: 14.5, lineHeight: 1.6, color: "var(--ink)" }}>
+                    {c.e.claim}{" "}
+                    <span className="chip" style={{ background: "var(--accent-wash)", color: "var(--accent-deep)", border: "1px solid rgba(91,124,240,.3)" }}>
+                      {c.e.id}
+                    </span>
+                  </p>
+                </Card>
+                <Connector text="traces to" />
+                <Card label="The source's exact words" inset>
+                  <p className="quote" style={{ fontSize: 13, lineHeight: 1.62 }}>
+                    &ldquo;{(c.e.quote_span ?? "").slice(0, 210)}&rdquo;
+                  </p>
+                </Card>
+                <Connector text="published by" />
+                <Card inset>
+                  <div className="row" style={{ justifyContent: "space-between", gap: 12 }}>
+                    <div>
+                      <div style={{ fontSize: 13.5, fontWeight: 600, color: "var(--ink)" }}>
+                        {c.reg?.publisher ?? c.doc?.title ?? "Source"}
+                      </div>
+                      <div style={{ fontSize: 11.5, color: "var(--muted)", marginTop: 2 }}>
+                        {c.doc?.published_on ?? "retrieved"} · {(c.doc?.url ?? "").replace(/^https?:\/\//, "").split("/")[0]}
+                      </div>
+                    </div>
+                    {c.reg?.tier && (
+                      <span className={`chip ${c.reg.tier === 1 ? "chip-tier1" : "chip-tier"}`}>TIER {c.reg.tier}</span>
+                    )}
+                  </div>
+                </Card>
+                <p style={{
+                  marginTop: 16, fontSize: 12, color: "#B6C4EE", lineHeight: 1.55,
+                  background: "rgba(8,12,34,.62)", borderRadius: 8, padding: "8px 11px",
+                  backdropFilter: "blur(2px)", alignSelf: "flex-start",
+                }}>
+                  Every claim in every brief carries this chain — {counts.evidence} rows across {counts.docs} documents.
+                  Open a report and click any citation to walk it.
+                </p>
+              </>
+            ) : (
+              <Card label="Nothing to show yet">
+                <p style={{ fontSize: 13.5, color: "var(--muted)" }}>
+                  The graph is empty. Run collection and extraction, and the chain appears here.
+                </p>
+              </Card>
+            )}
           </div>
-          {(gates.data ?? []).map(g => (
-            <GateCard key={g.id} id={g.id} status={g.status}
-              blocks={g.status === "OPEN" ? `${g.blocks} — no UAE-layer Class A/B evidence yet.` : g.blocks} />
-          ))}
-          {!gates.data?.length && <div className="card" style={{ padding: 16, fontSize: 13, color: "var(--faint)" }}>No gates yet — run the rules engine.</div>}
-        </section>
-
-        <section style={{ display: "flex", flexDirection: "column", gap: 12 }}>
-          <h2 className="section-title">Signals</h2>
-          <div className="card" style={{ padding: "4px 16px" }}>
-            {(signals.data ?? []).map((s, i, arr) => (
-              <div key={s.id} className="row" style={{ gap: 14, padding: "13px 0", borderBottom: i < arr.length - 1 ? "1px solid var(--line-soft)" : "none" }}>
-                <span style={{ fontSize: 11, fontWeight: 700, color: "var(--accent)", width: 84, flexShrink: 0 }}>{s.id}</span>
-                <span style={{ fontSize: 13, color: "var(--ink-2)", flexGrow: 1 }}>{s.statement}</span>
-                <SignalMeter strength={s.strength} />
-              </div>
-            ))}
-            {!signals.data?.length && <div style={{ padding: 16, fontSize: 13, color: "var(--faint)" }}>No admitted signals yet.</div>}
-          </div>
-          <h2 className="section-title" style={{ marginTop: 6 }}>Recent reports</h2>
-          <div className="card" style={{ padding: "4px 16px" }}>
-            {(reports.data ?? []).map((r, i, arr) => (
-              <div key={r.id} className="row" style={{ padding: "13px 0", borderBottom: i < arr.length - 1 ? "1px solid var(--line-soft)" : "none" }}>
-                <Link href={`/reports/${r.id}`} style={{ fontSize: 13.5, fontWeight: 600, color: "var(--ink)", flexGrow: 1 }}>{r.title}</Link>
-                <span className={`chip ${r.status === "GATES_OPEN" ? "chip-open" : "chip-conf"}`}>{r.status.replace("_", " ")}</span>
-                <span style={{ fontSize: 12, color: "var(--ghost)" }}>{new Date(r.created_at).toLocaleDateString("en-GB", { day: "numeric", month: "short" })}</span>
-              </div>
-            ))}
-            {!reports.data?.length && <div style={{ padding: 16, fontSize: 13, color: "var(--faint)" }}>No reports generated yet.</div>}
-          </div>
-        </section>
+        </div>
       </div>
+    </div>
+  );
+}
+
+function Card({ label, children, inset }: { label?: string; children: React.ReactNode; inset?: boolean }) {
+  return (
+    <div style={{
+      background: "var(--card)", borderRadius: 14, padding: "16px 18px",
+      marginLeft: inset ? 34 : 0, boxShadow: "0 18px 44px rgba(4,8,28,.34)",
+    }}>
+      {label && <div className="kicker" style={{ marginBottom: 8 }}>{label}</div>}
+      {children}
+    </div>
+  );
+}
+
+function Connector({ text }: { text: string }) {
+  return (
+    <div className="row" style={{ gap: 10, padding: "10px 0 10px 16px" }}>
+      <span style={{ width: 9, height: 9, borderRadius: 5, background: "var(--accent)", flexShrink: 0 }} />
+      <span style={{ fontFamily: "'Space Grotesk'", fontSize: 10, letterSpacing: 1.6, textTransform: "uppercase", color: "#8FA3E8" }}>
+        {text}
+      </span>
+      <span style={{ flex: 1, height: 1, background: "linear-gradient(90deg, rgba(91,124,240,.5), transparent)" }} />
     </div>
   );
 }

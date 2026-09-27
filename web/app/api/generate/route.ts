@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { supabaseAdmin, hasServiceKey } from "../../../lib/supabase-admin";
+import { supabaseAdmin, hasServiceKey } from "@/lib/supabase-admin";
 
 // The heavy pipeline runs in Python (repo /pipeline). This endpoint records the
 // request and, when a dispatch channel is configured, asks GitHub Actions to

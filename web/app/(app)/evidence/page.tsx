@@ -1,6 +1,6 @@
-import { supabase } from "../../lib/supabase";
-import EvidenceCard from "../../components/EvidenceCard";
-import { PILLAR_LABEL } from "../../components/chips";
+import { supabase } from "@/lib/supabase";
+import EvidenceCard from "@/components/EvidenceCard";
+import { PILLAR_LABEL } from "@/components/chips";
 
 export const revalidate = 0;
 export const dynamic = "force-dynamic";

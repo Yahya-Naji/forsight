@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
-import { supabaseAdmin, hasServiceKey } from "../../../../lib/supabase-admin";
-import { checkPassage } from "../../../../lib/verify";
+import { supabaseAdmin, hasServiceKey } from "@/lib/supabase-admin";
+import { checkPassage } from "@/lib/verify";
 
 // Applying an edit rewrites a verified document, so the checks run again here
 // rather than trusting the verdict stored at proposal time — the graph may have
