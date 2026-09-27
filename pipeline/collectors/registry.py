@@ -51,6 +51,13 @@ SOURCES = [
      "rss", [CY, AI], "EU cyber agency threat landscape and certification schemes"),
     ("SRC-T1-014", 1, "NSA Cybersecurity (US)", "https://www.nsa.gov/Cybersecurity",
      "search", [CY], "CNSA 2.0 quantum-resistant algorithm suite and NSS guidance"),
+    ("SRC-T1-015", 1, "US GAO", "https://www.gao.gov",
+     "search", [PR, EW, AI], "Independent audit of defence acquisition, counter-UAS "
+     "programmes and modular open systems"),
+    ("SRC-T1-016", 1, "Congressional Research Service", "https://crsreports.congress.gov",
+     "search", [PR, EW], "Legislative and authority analysis on counter-UAS"),
+    ("SRC-T1-017", 1, "NATO Allied Command Transformation", "https://www.act.nato.int",
+     "search", [EW, AI], "Layered counter-UAS experimentation campaign"),
 
     # ---------------- TIER 2 — international / academic / strategic ------------
     ("SRC-T2-001", 2, "RAND Corporation", "https://www.rand.org",
@@ -116,6 +123,15 @@ DOMAIN_ALIASES = {
     # decides evidence class downstream, which makes an absent mapping a
     # correctness bug rather than a cosmetic one.
     "cisa.gov": "SRC-T1-012",
+    # GAO landed as Tier 4 for want of a registry row, exactly as CISA had.
+    # Tier decides evidence class, so an absent mapping silently downgrades an
+    # audit authority to the standing of a news aggregator.
+    "gao.gov": "SRC-T1-015",
+    "files.gao.gov": "SRC-T1-015",
+    "crsreports.congress.gov": "SRC-T1-016",
+    "act.nato.int": "SRC-T1-017",
+    "ac.nato.int": "SRC-T1-005",
+    "ncia.nato.int": "SRC-T1-005",
     "enisa.europa.eu": "SRC-T1-013",
     "nsa.gov": "SRC-T1-014",
     "csrc.nist.gov": "SRC-T1-007",
