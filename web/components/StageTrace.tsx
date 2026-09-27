@@ -1,83 +1,63 @@
 import { LAYER, type Stage } from "@/lib/engine";
+import { Card } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
+import { SectionHead } from "@/components/ui/section";
+import { cn } from "@/lib/utils";
 
 // The pipeline drawn as attrition rather than as progress.
 //
 // A row of green ticks says the run finished, which is the least interesting
-// thing about it. What a reader needs to see is how much was dropped and by
-// which rule — 85 candidate images admitted 7, and a checklist would show that
-// as one tick. So the spine's width encodes how many objects are still carried
-// at each stage, and everything refused leaves it as a labelled wedge.
+// thing about it. What a reader needs is how much was dropped and by which rule
+// — 85 candidate images admitted 7, and a checklist shows that as one tick. So
+// the spine's width encodes how many objects are still carried at each stage,
+// and everything refused leaves it as a labelled chip.
 //
 // The taper is drawn in a normalised 0–100 viewBox with preserveAspectRatio
-// switched off, so one SVG fills whatever height the band's prose needs.
+// switched off, so one SVG fills whatever height the band's prose needs. The
+// layer colours stay inline because they are data from lib/engine, not classes.
 
 export type StageRow = {
   stage: Stage;
-  /** Objects still carried leaving this stage. */
   flowing: number | null;
-  /** Objects this stage dropped, by the rule that dropped them. */
   refusals: { rule: string; count: number; sample?: string }[];
-  /** Live run state, when a run is in flight. */
   state?: "done" | "active" | "failed" | "idle";
-  /** Stage-specific panel — the forecast arithmetic, the section ledger. */
   detail?: React.ReactNode;
 };
 
-const RAIL = 96;
-const MAX_W = 46;     // spine half-width at the widest point, in viewBox units
+const MAX_W = 46;   // spine half-width at its widest, in viewBox units
 
-/** Square-root so an order-of-magnitude drop stays legible instead of vanishing. */
+/** Square root, so an order-of-magnitude drop stays legible instead of vanishing. */
 function halfWidth(n: number | null, peak: number) {
   if (!n || n <= 0 || peak <= 0) return 3;
   return Math.max(3, Math.sqrt(n / peak) * MAX_W);
 }
 
-function Spine({ inW, outW, fill, line, first, last }: {
-  inW: number; outW: number; fill: string; line: string; first: boolean; last: boolean;
-}) {
+function Dot({ state = "idle" }: { state?: StageRow["state"] }) {
   return (
-    <svg viewBox="0 0 100 100" preserveAspectRatio="none" aria-hidden
-         style={{ position: "absolute", inset: 0, width: "100%", height: "100%" }}>
-      <polygon points={`${50 - inW},0 ${50 + inW},0 ${50 + outW},100 ${50 - outW},100`}
-               fill={fill} fillOpacity="0.85" stroke={line} strokeWidth="0.5" strokeOpacity="0.45" />
-      {first && <line x1={50 - inW} y1="0" x2={50 + inW} y2="0" stroke={line} strokeWidth="1.2" />}
-      {last && <line x1={50 - outW} y1="100" x2={50 + outW} y2="100" stroke={line} strokeWidth="1.2" />}
-    </svg>
-  );
-}
-
-function Dot({ state }: { state: StageRow["state"] }) {
-  const s = state ?? "idle";
-  const bg = s === "failed" ? "#FF7878" : s === "done" ? "#4ADE80"
-           : s === "active" ? "#FFC96B" : "var(--card)";
-  return (
-    <span aria-hidden style={{
-      position: "absolute", top: 16, left: "50%", transform: "translateX(-50%)",
-      width: 13, height: 13, borderRadius: 7, background: bg,
-      border: s === "idle" ? "1.5px solid #C9D0E4" : "2px solid var(--card)",
-      boxShadow: s === "idle" ? "none" : "0 0 0 3px rgba(255,255,255,.9)", zIndex: 2,
-    }} />
+    <span aria-hidden className={cn(
+      "absolute left-1/2 top-4 z-[2] h-[13px] w-[13px] -translate-x-1/2 rounded-full",
+      state === "idle"
+        ? "border-[1.5px] border-[#C9D0E4] bg-card"
+        : "border-2 border-card shadow-[0_0_0_3px_rgba(255,255,255,.9)]",
+      state === "failed" && "bg-[#FF7878]",
+      state === "done" && "bg-[#4ADE80]",
+      state === "active" && "bg-[#FFC96B]")} />
   );
 }
 
 export default function StageTrace({ rows }: { rows: StageRow[] }) {
-  const peak = Math.max(1, ...rows.map((r) => r.flowing ?? 0));
+  const peak = Math.max(1, ...rows.map(r => r.flowing ?? 0));
 
   return (
     <section>
-      <div style={{ marginBottom: 14 }}>
-        <div className="kicker">The run, stage by stage</div>
-        <h2 className="display" style={{ fontSize: 22, fontWeight: 600, margin: "7px 0 5px" }}>
-          What each stage refused, and which rule refused it
-        </h2>
-        <div style={{ fontSize: 13.5, color: "var(--muted)", maxWidth: "64ch", lineHeight: 1.5 }}>
-          The band narrows as objects are dropped. Everything leaving it is written to
-          the refusal ledger with the rule that decided, because what a brief leaves
-          out is part of what it reports.
-        </div>
-      </div>
+      <SectionHead kicker="The run, stage by stage"
+                   title="What each stage refused, and which rule refused it">
+        The band narrows as objects are dropped. Everything leaving it is written to the
+        refusal ledger with the rule that decided, because what a brief leaves out is
+        part of what it reports.
+      </SectionHead>
 
-      <div style={{ background: "var(--card)", border: "1px solid var(--line)", borderRadius: "var(--radius)", overflow: "hidden" }}>
+      <Card className="overflow-hidden p-0">
         {rows.map((row, i) => {
           const { stage } = row;
           const l = LAYER[stage.layer];
@@ -86,63 +66,59 @@ export default function StageTrace({ rows }: { rows: StageRow[] }) {
           const dropped = row.refusals.reduce((a, r) => a + r.count, 0);
 
           return (
-            <div key={stage.key} style={{
-              display: "grid", gridTemplateColumns: `${RAIL}px 1fr`,
-              borderTop: i === 0 ? "none" : "1px solid var(--line-soft)",
-            }}>
-              {/* the spine */}
-              <div style={{ position: "relative", background: "#FBFCFE", borderRight: "1px solid var(--line-soft)" }}>
-                <Spine inW={inW} outW={outW} fill={l.spine} line={l.fg}
-                       first={i === 0} last={i === rows.length - 1} />
+            <div key={stage.key}
+                 className={cn("grid grid-cols-[96px_1fr]", i > 0 && "border-t border-line-soft")}>
+              <div className="relative border-r border-line-soft bg-[#FBFCFE]">
+                <svg viewBox="0 0 100 100" preserveAspectRatio="none" aria-hidden
+                     className="absolute inset-0 h-full w-full">
+                  <polygon
+                    points={`${50 - inW},0 ${50 + inW},0 ${50 + outW},100 ${50 - outW},100`}
+                    fill={l.spine} fillOpacity="0.85"
+                    stroke={l.fg} strokeWidth="0.5" strokeOpacity="0.45" />
+                  {i === 0 && <line x1={50 - inW} y1="0" x2={50 + inW} y2="0"
+                                    stroke={l.fg} strokeWidth="1.2" />}
+                  {i === rows.length - 1 && <line x1={50 - outW} y1="100" x2={50 + outW} y2="100"
+                                                  stroke={l.fg} strokeWidth="1.2" />}
+                </svg>
                 <Dot state={row.state} />
                 {typeof row.flowing === "number" && (
-                  <span style={{
-                    position: "absolute", bottom: 8, left: "50%", transform: "translateX(-50%)",
-                    fontFamily: "var(--mono)", fontSize: 11, fontWeight: 700, color: l.fg,
-                    background: "rgba(255,255,255,.94)", borderRadius: 4, padding: "1px 5px",
-                    border: `1px solid ${l.line}`,
-                  }}>{row.flowing}</span>
+                  <span className="absolute bottom-2 left-1/2 -translate-x-1/2 rounded
+                                   border bg-white/95 px-[5px] py-px font-mono text-xs font-bold"
+                        style={{ color: l.fg, borderColor: l.line }}>
+                    {row.flowing}
+                  </span>
                 )}
               </div>
 
-              {/* the stage */}
-              <div style={{ padding: "13px 16px 15px", minWidth: 0 }}>
-                <div style={{ display: "flex", alignItems: "center", gap: 9, flexWrap: "wrap" }}>
-                  <span style={{ fontFamily: "var(--mono)", fontSize: 10.5, color: "var(--ghost)" }}>
+              <div className="min-w-0 px-4 pb-[15px] pt-[13px]">
+                <div className="flex flex-wrap items-center gap-2.5">
+                  <span className="font-mono text-2xs text-ghost">
                     {String(i + 1).padStart(2, "0")}
                   </span>
-                  <span className="display" style={{ fontWeight: 600, fontSize: 15 }}>{stage.name}</span>
-                  <span style={{
-                    fontSize: 10, fontWeight: 700, letterSpacing: .7, textTransform: "uppercase",
-                    color: l.fg, background: l.bg, border: `1px solid ${l.line}`,
-                    borderRadius: 5, padding: "2px 7px",
-                  }}>{l.label}</span>
-                  <span style={{ marginLeft: "auto", fontFamily: "var(--mono)", fontSize: 10.5, color: "var(--ghost)" }}>
-                    {stage.decidedIn}
+                  <span className="font-display text-[15px] font-semibold">{stage.name}</span>
+                  <span className="rounded-[5px] border px-[7px] py-0.5 text-[10px]
+                                   font-bold uppercase tracking-wide"
+                        style={{ color: l.fg, background: l.bg, borderColor: l.line }}>
+                    {l.label}
                   </span>
+                  <span className="ml-auto font-mono text-2xs text-ghost">{stage.decidedIn}</span>
                 </div>
 
-                <div style={{ fontSize: 13, color: "var(--ink-2)", marginTop: 6, lineHeight: 1.5, maxWidth: "76ch" }}>
-                  {stage.sub}
-                </div>
-                <div style={{ fontSize: 12.5, color: "var(--muted)", marginTop: 6, lineHeight: 1.55, maxWidth: "76ch" }}>
+                <p className="mt-1.5 max-w-[76ch] text-base text-ink-2">{stage.sub}</p>
+                <p className="mt-1.5 max-w-[76ch] text-sm leading-relaxed text-muted">
                   {stage.refuses}
-                </div>
+                </p>
 
                 {dropped > 0 && (
-                  <div style={{
-                    marginTop: 10, display: "flex", flexWrap: "wrap", gap: 6, alignItems: "center",
-                  }}>
-                    <span style={{
-                      fontSize: 10.5, fontWeight: 700, letterSpacing: .7, textTransform: "uppercase",
-                      color: "var(--amber-ink)",
-                    }}>↳ refused {dropped}</span>
-                    {row.refusals.map((r) => (
-                      <span key={r.rule} title={r.sample ?? undefined} style={{
-                        fontFamily: "var(--mono)", fontSize: 10.5, color: "var(--amber-ink)",
-                        background: "var(--amber-bg)", border: "1px solid var(--amber-line)",
-                        borderRadius: 5, padding: "2px 7px",
-                      }}>{r.rule} · {r.count}</span>
+                  <div className="mt-2.5 flex flex-wrap items-center gap-1.5">
+                    <span className="text-2xs font-bold uppercase tracking-wide text-amber-ink">
+                      ↳ refused {dropped}
+                    </span>
+                    {row.refusals.map(r => (
+                      <Badge key={r.rule} variant="classC" title={r.sample ?? undefined}
+                             className="font-mono font-normal">
+                        {r.rule} · {r.count}
+                      </Badge>
                     ))}
                   </div>
                 )}
@@ -152,7 +128,7 @@ export default function StageTrace({ rows }: { rows: StageRow[] }) {
             </div>
           );
         })}
-      </div>
+      </Card>
     </section>
   );
 }

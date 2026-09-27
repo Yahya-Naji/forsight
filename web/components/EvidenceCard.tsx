@@ -1,4 +1,11 @@
 import { TierChip, ClassChip, LayerChip, ConfChip } from "./chips";
+import { Card } from "@/components/ui/card";
+import { cn } from "@/lib/utils";
+
+// One evidence row, with everything a reader needs to judge it: the claim, the
+// verbatim span it rests on, and the chips the rules assigned. The provenance
+// line is last and quiet — it is what you check after deciding the claim
+// matters, not before.
 
 export type Evidence = {
   id: string; claim: string; class: string | null; confidence: string | null;
@@ -8,19 +15,21 @@ export type Evidence = {
 
 export default function EvidenceCard({ ev, compact }: { ev: Evidence; compact?: boolean }) {
   return (
-    <div className="card" style={{ padding: compact ? "13px 15px" : "16px 18px" }}>
-      <div style={{ fontSize: compact ? 13.5 : 14.5, fontWeight: 600, lineHeight: 1.45 }}>{ev.claim}</div>
+    <Card className={compact ? "px-[15px] py-[13px]" : "px-[18px] py-4"}>
+      <p className={cn("font-semibold leading-snug", compact ? "text-base" : "text-[14.5px]")}>
+        {ev.claim}
+      </p>
       {!compact && ev.quote_span && <div className="quote">&ldquo;{ev.quote_span}&rdquo;</div>}
-      <div className="row" style={{ gap: 7, marginTop: compact ? 9 : 12 }}>
+      <div className={cn("flex items-center gap-[7px]", compact ? "mt-2.5" : "mt-3")}>
         <TierChip tier={ev.tier} />
         <ClassChip c={ev.class} />
         <ConfChip c={ev.confidence} />
         <LayerChip layer={ev.env_layer} />
-        <span style={{ flexGrow: 1 }} />
-        <span style={{ fontSize: 12, color: "var(--faint)" }}>
+        <span className="grow" />
+        <span className="text-sm text-faint">
           {[ev.publisher, ev.id, ev.date].filter(Boolean).join(" · ")}
         </span>
       </div>
-    </div>
+    </Card>
   );
 }

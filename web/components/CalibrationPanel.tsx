@@ -1,21 +1,19 @@
 import { BAND_COLOR, calibrationTerms } from "@/lib/engine";
+import { Badge } from "@/components/ui/badge";
+import { cn } from "@/lib/utils";
 
 // Why a forecast carries the band it carries.
 //
-// A plausibility label on its own is indistinguishable from a guess, and asking a
-// model for a percentage produces a confident number with nothing under it. So
-// the band is arithmetic: corroboration breadth earns points, distance and
-// unresolved questions cost them, and the total lands in a band. The sum is
-// stored on the row in `basis`, which means it can be shown rather than claimed —
-// and a reader who disagrees with the band can see exactly which term to argue
-// with.
+// A plausibility label on its own is indistinguishable from a guess, and asking
+// a model for a percentage produces a confident number with nothing under it.
+// So the band is arithmetic: corroboration breadth earns points, distance and
+// unresolved questions cost them. The sum is stored on the row in `basis`,
+// which means it can be shown rather than claimed — and a reader who disagrees
+// with the band can see exactly which term to argue with.
 
 export type ForecastRow = {
-  id: string;
-  statement: string;
-  horizon: string;
-  plausibility: string;
-  falsifier: string | null;
+  id: string; statement: string; horizon: string;
+  plausibility: string; falsifier: string | null;
   basis: Record<string, any> | null;
 };
 
@@ -24,74 +22,59 @@ const HORIZON_LABEL: Record<string, string> = {
 };
 
 function Term({ label, value, note }: { label: string; value: number; note: string }) {
-  const neg = value < 0;
   return (
-    <div style={{ display: "flex", alignItems: "baseline", gap: 8, fontSize: 12 }}>
-      <span style={{
-        fontFamily: "var(--mono)", fontWeight: 700, minWidth: 26, textAlign: "right",
-        color: neg ? "var(--amber-ink)" : "var(--green-ink)",
-      }}>{neg ? value : `+${value}`}</span>
-      <span style={{ color: "var(--ink-2)", minWidth: 132 }}>{label}</span>
-      <span style={{ color: "var(--ghost)", fontSize: 11.5 }}>{note}</span>
+    <div className="flex items-baseline gap-2 text-sm">
+      <span className={cn("min-w-[26px] text-right font-mono font-bold tabular-nums",
+                          value < 0 ? "text-amber-ink" : "text-green-ink")}>
+        {value < 0 ? value : `+${value}`}
+      </span>
+      <span className="min-w-[132px] text-ink-2">{label}</span>
+      <span className="text-xs text-ghost">{note}</span>
     </div>
   );
 }
 
 export default function CalibrationPanel({ forecasts }: { forecasts: ForecastRow[] }) {
-  if (forecasts.length === 0) {
+  if (!forecasts.length) {
     return (
-      <div style={{ marginTop: 12, fontSize: 12.5, color: "var(--muted)" }}>
+      <p className="mt-3 text-sm text-muted">
         No admitted forecast for this pillar yet — every proposal was refused for having
         no admitted signal behind it.
-      </div>
+      </p>
     );
   }
 
   return (
-    <div style={{ marginTop: 13, display: "flex", flexDirection: "column", gap: 9 }}>
-      {forecasts.map((f) => {
+    <div className="mt-3 flex flex-col gap-2.5">
+      {forecasts.map(f => {
         const terms = calibrationTerms(f.basis);
         const score = f.basis?.score;
         const c = BAND_COLOR[f.plausibility] ?? BAND_COLOR.SPECULATIVE;
         return (
-          <div key={f.id} style={{
-            border: "1px solid var(--line)", borderRadius: 10, padding: "11px 13px",
-            background: "#FCFCFE",
-          }}>
-            <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
-              <span style={{ fontFamily: "var(--mono)", fontSize: 11, color: "var(--faint)" }}>{f.id}</span>
-              <span style={{ fontSize: 11.5, color: "var(--muted)" }}>{HORIZON_LABEL[f.horizon] ?? f.horizon}</span>
-              <span style={{ marginLeft: "auto", display: "flex", alignItems: "center", gap: 7 }}>
+          <div key={f.id} className="rounded-[10px] border border-line bg-[#FCFCFE] px-3 py-3">
+            <div className="flex flex-wrap items-center gap-2">
+              <span className="font-mono text-xs text-faint">{f.id}</span>
+              <span className="text-xs text-muted">{HORIZON_LABEL[f.horizon] ?? f.horizon}</span>
+              <span className="ml-auto flex items-center gap-[7px]">
                 {typeof score === "number" && (
-                  <span style={{ fontFamily: "var(--mono)", fontSize: 11, color: "var(--ghost)" }}>
-                    score {score}
-                  </span>
+                  <span className="font-mono text-xs text-ghost">score {score}</span>
                 )}
-                <span className="chip" style={{ color: c.fg, background: c.bg, letterSpacing: 1 }}>
-                  {f.plausibility}
-                </span>
+                <Badge className="tracking-[1px]"
+                       style={{ color: c.fg, background: c.bg }}>{f.plausibility}</Badge>
               </span>
             </div>
 
-            <div style={{ fontSize: 13, color: "var(--ink)", marginTop: 7, lineHeight: 1.5, maxWidth: "74ch" }}>
-              {f.statement}
-            </div>
+            <p className="mt-[7px] max-w-[74ch] text-base text-ink">{f.statement}</p>
 
             {terms.length > 0 && (
-              <div style={{
-                marginTop: 9, paddingTop: 9, borderTop: "1px dashed var(--line)",
-                display: "flex", flexDirection: "column", gap: 3,
-              }}>
-                {terms.map((t) => <Term key={t.label} {...t} />)}
-                <div style={{
-                  display: "flex", alignItems: "baseline", gap: 8, fontSize: 12,
-                  marginTop: 3, paddingTop: 4, borderTop: "1px solid var(--line-soft)",
-                }}>
-                  <span style={{ fontFamily: "var(--mono)", fontWeight: 700, minWidth: 26, textAlign: "right" }}>
+              <div className="mt-2.5 flex flex-col gap-[3px] border-t border-dashed border-line pt-2.5">
+                {terms.map(t => <Term key={t.label} {...t} />)}
+                <div className="mt-[3px] flex items-baseline gap-2 border-t border-line-soft pt-1 text-sm">
+                  <span className="min-w-[26px] text-right font-mono font-bold tabular-nums">
                     {score}
                   </span>
-                  <span style={{ color: "var(--ink-2)", minWidth: 132, fontWeight: 600 }}>lands in</span>
-                  <span style={{ color: c.fg, fontWeight: 700, fontSize: 11.5, letterSpacing: .6 }}>
+                  <span className="min-w-[132px] font-semibold text-ink-2">lands in</span>
+                  <span className="text-xs font-bold tracking-wide" style={{ color: c.fg }}>
                     {f.plausibility}
                   </span>
                 </div>
@@ -99,11 +82,10 @@ export default function CalibrationPanel({ forecasts }: { forecasts: ForecastRow
             )}
 
             {f.falsifier && (
-              <div className="quote" style={{ marginTop: 9, fontStyle: "normal" }}>
-                <span style={{
-                  fontSize: 10, fontWeight: 700, letterSpacing: .8, textTransform: "uppercase",
-                  color: "var(--faint)", display: "block", marginBottom: 3,
-                }}>What would refute this</span>
+              <div className="quote mt-2.5 not-italic">
+                <span className="mb-[3px] block text-2xs font-bold uppercase tracking-wide text-faint">
+                  What would refute this
+                </span>
                 {f.falsifier}
               </div>
             )}
