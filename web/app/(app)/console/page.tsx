@@ -2,10 +2,31 @@ import Link from "next/link";
 import { supabase } from "@/lib/supabase";
 import GateCard from "@/components/GateCard";
 import SignalMeter from "@/components/SignalMeter";
-import { PILLAR_LABEL } from "@/components/chips";
+import { Card } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
+import { Aurora, Stat, Kicker } from "@/components/ui/section";
 
 export const revalidate = 0;
 export const dynamic = "force-dynamic";
+
+/** A list whose rows are separated by rules rather than by wrapping each row in
+ *  its own card — the console shows registers, and a card per row reads as five
+ *  unrelated things rather than one list. */
+function Rows({ children, empty }: { children: React.ReactNode; empty: string }) {
+  const items = Array.isArray(children) ? children.filter(Boolean) : children;
+  const any = Array.isArray(items) ? items.length > 0 : Boolean(items);
+  return (
+    <Card className="px-4 py-1">
+      {any ? (
+        <div className="[&>*]:border-t [&>*]:border-line-soft [&>*:first-child]:border-t-0">
+          {items}
+        </div>
+      ) : (
+        <div className="p-4 text-base text-faint">{empty}</div>
+      )}
+    </Card>
+  );
+}
 
 export default async function Overview() {
   const [ev, docs, srcs, gates, signals, reports, recentDocs] = await Promise.all([
@@ -13,83 +34,103 @@ export default async function Overview() {
     supabase.from("documents").select("id", { count: "exact", head: true }),
     supabase.from("source_registry").select("id", { count: "exact", head: true }),
     supabase.from("validation_gates").select("*").order("id"),
-    supabase.from("signals").select("*").in("strength", ["STRONG", "STRONG_EMERGING", "EMERGING"]).limit(5),
-    supabase.from("reports").select("id,title,status,created_at").order("created_at", { ascending: false }).limit(5),
-    supabase.from("documents").select("title,retrieved_at,registry_id,source_registry(publisher,tier)").order("retrieved_at", { ascending: false }).limit(8),
+    supabase.from("signals").select("*")
+      .in("strength", ["STRONG", "STRONG_EMERGING", "EMERGING"]).limit(5),
+    supabase.from("reports").select("id,title,status,created_at")
+      .order("created_at", { ascending: false }).limit(5),
+    supabase.from("documents")
+      .select("title,retrieved_at,registry_id,source_registry(publisher,tier)")
+      .order("retrieved_at", { ascending: false }).limit(8),
   ]);
   const openGates = (gates.data ?? []).filter(g => g.status === "OPEN");
 
   return (
-    <div style={{ display: "flex", flexDirection: "column", gap: 20 }}>
-      <section className="aurora" style={{ padding: "34px 38px 26px" }}>
-        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 24, flexWrap: "wrap" }}>
+    <div className="flex flex-col gap-5">
+      <Aurora className="px-[38px] pb-[26px] pt-[34px]">
+        <div className="flex flex-wrap items-start justify-between gap-6">
           <div>
-            <div className="kicker" style={{ color: "#93A7E8" }}>Strategic foresight · UAE defence</div>
-            <h1 className="display" style={{ fontWeight: 700, fontSize: 40, margin: "10px 0 0", letterSpacing: -0.5 }}>Intelligence, with receipts.</h1>
-            <div style={{ fontSize: 14, color: "#B8C4EE", marginTop: 8 }}>Every claim below traces to a source. Nothing here is generated from a prompt.</div>
+            <Kicker className="text-[#93A7E8]">Strategic foresight · UAE defence</Kicker>
+            <h1 className="display mt-2.5 text-[40px] font-bold tracking-tight">
+              Intelligence, with receipts.
+            </h1>
+            <p className="mt-2 text-[14px] text-[#B8C4EE]">
+              Every claim below traces to a source. Nothing here is generated from a prompt.
+            </p>
           </div>
-          <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
-            {[["evidence", ev.count], ["documents", docs.count], ["sources", srcs.count]].map(([k, v]) => (
-              <div key={String(k)} style={{ textAlign: "center", background: "rgba(255,255,255,.06)", border: "1px solid rgba(255,255,255,.12)", borderRadius: 14, padding: "14px 22px" }}>
-                <div className="display" style={{ fontWeight: 700, fontSize: 28 }}>{v ?? 0}</div>
-                <div style={{ fontSize: 11, color: "#9FB0E6", marginTop: 2 }}>{k}</div>
-              </div>
-            ))}
-            <div style={{ textAlign: "center", background: "rgba(255,183,77,.12)", border: "1px solid rgba(255,183,77,.35)", borderRadius: 14, padding: "14px 22px" }}>
-              <div className="display" style={{ fontWeight: 700, fontSize: 28, color: "#FFC96B" }}>{openGates.length}</div>
-              <div style={{ fontSize: 11, color: "#E8BE85", marginTop: 2 }}>gates open</div>
-            </div>
+          <div className="flex flex-wrap gap-2.5">
+            <Stat value={ev.count ?? 0} label="evidence" />
+            <Stat value={docs.count ?? 0} label="documents" />
+            <Stat value={srcs.count ?? 0} label="sources" />
+            <Stat value={openGates.length} label="gates open" tone="warn" />
           </div>
         </div>
-        <div style={{ marginTop: 24, display: "flex", alignItems: "center", gap: 14, background: "rgba(10,14,40,.55)", border: "1px solid rgba(255,255,255,.1)", borderRadius: 12, padding: "10px 16px", overflow: "hidden" }}>
-          <span style={{ display: "flex", alignItems: "center", gap: 7, color: "#7EE0A9", fontWeight: 600, fontSize: 12.5, flexShrink: 0 }}>
-            <span style={{ width: 7, height: 7, borderRadius: 4, background: "#4ADE80" }} />DAILY RUN
+
+        {/* What ran most recently, by publisher and tier — the console's claim is
+            that collection is continuous and tiered, so it is shown rather than
+            asserted. */}
+        <div className="mt-6 flex items-center gap-3.5 overflow-hidden rounded-xl
+                        border border-white/10 bg-[rgba(10,14,40,.55)] px-4 py-2.5">
+          <span className="flex shrink-0 items-center gap-[7px] text-sm font-semibold text-[#7EE0A9]">
+            <span className="h-[7px] w-[7px] rounded-full bg-[#4ADE80]" />
+            DAILY RUN
           </span>
           <div className="ticker">
             <div className="ticker-track">
               {(recentDocs.data ?? []).map((d: any, i: number) => (
-                <span key={i}>{d.source_registry?.publisher ?? "unknown"} · <b style={{ color: "#fff" }}>Tier {d.source_registry?.tier ?? "?"}</b></span>
+                <span key={i}>
+                  {d.source_registry?.publisher ?? "unknown"} ·{" "}
+                  <b className="text-white">Tier {d.source_registry?.tier ?? "?"}</b>
+                </span>
               ))}
             </div>
           </div>
         </div>
-      </section>
+      </Aurora>
 
-      <div style={{ display: "grid", gridTemplateColumns: "1.1fr 1.4fr", gap: 20 }}>
-        <section style={{ display: "flex", flexDirection: "column", gap: 12 }}>
-          <div className="row" style={{ justifyContent: "space-between" }}>
-            <h2 className="section-title">Validation gates</h2>
-          </div>
+      <div className="grid grid-cols-1 gap-5 lg:grid-cols-[1.1fr_1.4fr]">
+        <section className="flex flex-col gap-3">
+          <h2 className="section-title">Validation gates</h2>
           {(gates.data ?? []).map(g => (
             <GateCard key={g.id} id={g.id} status={g.status}
-              blocks={g.status === "OPEN" ? `${g.blocks} — no UAE-layer Class A/B evidence yet.` : g.blocks} />
+              blocks={g.status === "OPEN"
+                ? `${g.blocks} — no UAE-layer Class A/B evidence yet.`
+                : g.blocks} />
           ))}
-          {!gates.data?.length && <div className="card" style={{ padding: 16, fontSize: 13, color: "var(--faint)" }}>No gates yet — run the rules engine.</div>}
+          {!gates.data?.length && (
+            <Card className="p-4 text-base text-faint">No gates yet — run the rules engine.</Card>
+          )}
         </section>
 
-        <section style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+        <section className="flex flex-col gap-3">
           <h2 className="section-title">Signals</h2>
-          <div className="card" style={{ padding: "4px 16px" }}>
-            {(signals.data ?? []).map((s, i, arr) => (
-              <div key={s.id} className="row" style={{ gap: 14, padding: "13px 0", borderBottom: i < arr.length - 1 ? "1px solid var(--line-soft)" : "none" }}>
-                <span style={{ fontSize: 11, fontWeight: 700, color: "var(--accent)", width: 84, flexShrink: 0 }}>{s.id}</span>
-                <span style={{ fontSize: 13, color: "var(--ink-2)", flexGrow: 1 }}>{s.statement}</span>
+          <Rows empty="No admitted signals yet.">
+            {(signals.data ?? []).map(s => (
+              <div key={s.id} className="flex items-center gap-3.5 py-3">
+                <span className="w-[84px] shrink-0 text-xs font-bold text-accent">{s.id}</span>
+                <span className="grow text-base text-ink-2">{s.statement}</span>
                 <SignalMeter strength={s.strength} />
               </div>
             ))}
-            {!signals.data?.length && <div style={{ padding: 16, fontSize: 13, color: "var(--faint)" }}>No admitted signals yet.</div>}
-          </div>
-          <h2 className="section-title" style={{ marginTop: 6 }}>Recent reports</h2>
-          <div className="card" style={{ padding: "4px 16px" }}>
-            {(reports.data ?? []).map((r, i, arr) => (
-              <div key={r.id} className="row" style={{ padding: "13px 0", borderBottom: i < arr.length - 1 ? "1px solid var(--line-soft)" : "none" }}>
-                <Link href={`/reports/${r.id}`} style={{ fontSize: 13.5, fontWeight: 600, color: "var(--ink)", flexGrow: 1 }}>{r.title}</Link>
-                <span className={`chip ${r.status === "GATES_OPEN" ? "chip-open" : "chip-conf"}`}>{r.status.replace("_", " ")}</span>
-                <span style={{ fontSize: 12, color: "var(--ghost)" }}>{new Date(r.created_at).toLocaleDateString("en-GB", { day: "numeric", month: "short" })}</span>
+          </Rows>
+
+          <h2 className="section-title mt-1.5">Recent reports</h2>
+          <Rows empty="No reports generated yet.">
+            {(reports.data ?? []).map(r => (
+              <div key={r.id} className="flex items-center gap-3 py-3">
+                <Link href={`/reports/${r.id}`}
+                      className="grow text-base font-semibold text-ink hover:text-accent-deep">
+                  {r.title}
+                </Link>
+                <Badge variant={r.status === "GATES_OPEN" ? "open" : "default"}>
+                  {r.status.replace("_", " ")}
+                </Badge>
+                <span className="text-sm text-ghost">
+                  {new Date(r.created_at).toLocaleDateString("en-GB",
+                    { day: "numeric", month: "short" })}
+                </span>
               </div>
             ))}
-            {!reports.data?.length && <div style={{ padding: 16, fontSize: 13, color: "var(--faint)" }}>No reports generated yet.</div>}
-          </div>
+          </Rows>
         </section>
       </div>
     </div>
