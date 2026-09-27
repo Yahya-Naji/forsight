@@ -14,12 +14,18 @@ export async function POST(req: Request) {
 
   let pillar = "CYBERSECURITY";
   let title: string | null = null;
+  let briefId: string | null = null;
+  let template = "TPL-BRIEF-01";
   try {
     const form = await req.formData();
     const p = String(form.get("pillar") ?? "");
     if (PILLARS.includes(p)) pillar = p;
     const t = String(form.get("title") ?? "").trim();
     if (t) title = t;
+    const b = String(form.get("brief_id") ?? "").trim();
+    if (b) briefId = b;
+    const tpl = String(form.get("template") ?? "").trim();
+    if (tpl) template = tpl;
   } catch {
     /* no body — fall through with defaults */
   }
@@ -30,7 +36,7 @@ export async function POST(req: Request) {
 
   const { data, error } = await supabaseAdmin
     .from("pipeline_runs")
-    .insert({ pillar, title, template_id: "TPL-BRIEF-01", status: "QUEUED" })
+    .insert({ pillar, title, template_id: template, status: "QUEUED" })
     .select("id")
     .single();
 
@@ -57,7 +63,7 @@ export async function POST(req: Request) {
           },
           body: JSON.stringify({
             ref: process.env.GH_REF ?? "main",
-            inputs: { pillar, run_id: data.id, title: title ?? "" },
+            inputs: { pillar, run_id: data.id, title: title ?? "", brief_id: briefId ?? "" },
           }),
         }
       );

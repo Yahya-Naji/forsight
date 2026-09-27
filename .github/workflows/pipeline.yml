@@ -20,6 +20,10 @@ on:
         description: "Report title"
         required: false
         type: string
+      brief_id:
+        description: "report_briefs id, when generated from a reader's brief"
+        required: false
+        type: string
 
 concurrency:
   group: pipeline-${{ inputs.pillar }}
@@ -67,8 +71,16 @@ jobs:
       - name: Generate
         run: |
           TITLE="${{ inputs.title }}"
-          python generate.py --pillar "$PILLAR" --run-id "$RUN_ID" \
-            --title "${TITLE:-$PILLAR baseline}"
+          BRIEF="${{ inputs.brief_id }}"
+          # A brief carries its own title, scope and structure; without one the
+          # run falls back to the standing pillar baseline.
+          if [ -n "$BRIEF" ]; then
+            python generate.py --pillar "$PILLAR" --run-id "$RUN_ID" \
+              --brief "$BRIEF" --template TPL-DECISION-01
+          else
+            python generate.py --pillar "$PILLAR" --run-id "$RUN_ID" \
+              --title "${TITLE:-$PILLAR baseline}"
+          fi
 
       # Verification decides DONE vs FAILED on the run row, so it must not be
       # skipped when generation produced a report with blocking failures.

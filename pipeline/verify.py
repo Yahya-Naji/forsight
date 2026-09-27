@@ -52,6 +52,71 @@ OBJECT_REF = re.compile(
 # list scaffolding and hedged/meta sentences are not assertions.
 SKIP_PREFIXES = ("#", "|", "---", ">", "*Status", "Customer Validation")
 
+# A line that is nothing but bold text is an action title — the consulting
+# template's heading device. Scoring it as a claim asks the writer to cite a
+# heading, which is why the findings section was withheld for being well-formed.
+BOLD_HEADING = re.compile(r"^\*\*[^*]+\*\*:?$")
+
+# Labels the template puts in front of content. They must come off before the
+# sentence is judged, or "So what: Ensure suppliers ..." reads as an assertion
+# beginning with the word "So" rather than as the imperative it is.
+# Labels that introduce a condition to watch rather than a present claim.
+# "Trigger: observed increase in supplier gaps" states what would prompt
+# action; it asserts nothing yet, so there is nothing to cite.
+CONDITION_LABEL = re.compile(
+    r"^\*{0,2}(trigger|watch|falsifier|indicator|threshold|"
+    r"what would refute this)\*{0,2}\s*[:\u2014-]", re.I)
+
+# Ordered list markers. "4. **Enhance readiness**: Address the gap" is an
+# action item; without stripping the "4. " the bold label survives and the
+# sentence reads as an assertion instead of the imperative it is.
+LIST_NUMBER = re.compile(r"^\d+[.)]\s+")
+
+# Any short bold run followed by a colon is a label, whatever the word is.
+# Enumerating labels meant "**Revisit**:" failed while "**Trigger**:" passed,
+# which is a distinction the reader cannot see and the writer cannot guess.
+BOLD_LABEL = re.compile(r"^\*\*[^*]{1,60}\*\*\s*:\s*")
+
+LABEL = re.compile(
+    r"^\*{0,2}(so what|trigger|implication|implications|action|owner|why|"
+    r"bottom line|recommendation|watch|horizon|confidence|falsifier|"
+    r"what would refute this|next step)\*{0,2}\s*[:\u2014-]\s*", re.I)
+
+# Sentences about the report and its evidence base rather than about the world.
+# "Two claims are blocked by an open gate" describes this document; there is no
+# external source to cite for it, and demanding one withholds the honesty.
+# Both halves must be present: something that names this document or its
+# evidence base, AND a predicate about coverage. "This report shows attackers
+# breached the portal" names the document but asserts a fact about the world,
+# so it stays subject to citation.
+META_SUBJECT = re.compile(
+    r"\b(this (report|brief|section|assessment)|the (evidence base|evidence)|"
+    r"blocked claims?|open gates?|validation gates?|research gaps?|"
+    r"these (claims|findings))\b", re.I)
+META_PREDICATE = re.compile(
+    r"\b(excluded|withheld|blocked|omitted|unverified|insufficient|"
+    r"does not (support|establish|extend|cover)|do not (support|establish)|"
+    r"cannot be (confirmed|verified|established)|could not be established|"
+    r"not established|requires? (customer )?validation|"
+    r"no (uae-specific |direct )?evidence)\b", re.I)
+
+
+# A sentence that opens on a condition asserts nothing about the present:
+# "If vulnerabilities prove incapable of contractual mitigation" states when to
+# act, not that anything has happened. Narrow by design — the opener must be the
+# first word, so a claim cannot hide behind a conditional clause mid-sentence.
+CONDITIONAL_OPENER = re.compile(
+    r"^(if|should|unless|were\s+\w+\s+to|in the event|absent|"
+    r"provided that|so long as)\b", re.I)
+
+
+def is_condition(sentence: str) -> bool:
+    return bool(CONDITIONAL_OPENER.match(sentence.strip()))
+
+
+def is_meta_claim(sentence: str) -> bool:
+    return bool(META_SUBJECT.search(sentence) and META_PREDICATE.search(sentence))
+
 HEDGES = ("forecast", "speculative", "outlook", "projected", "projection",
           "may", "might", "could", "unproven", "single-source", "not confirmed",
           "cannot be confirmed", "uncertain", "pending", "requires validation",
@@ -63,8 +128,13 @@ CONSTRUCT_MARKERS = ("proposed", "for consideration", "not current", "class d",
 
 # Words that make a sentence a factual assertion rather than framing.
 ASSERTIVE = re.compile(
-    r"\b(is|are|was|were|has|have|shows?|demonstrates?|confirms?|proves?|"
-    r"increases?|decreases?|reduces?|requires?|creates?|causes?)\b", re.I)
+    r"\b(is|are|was|were|has|have|had|shows?|showed|demonstrat(?:es?|ed)|"
+    r"confirms?|confirmed|proves?|proved|increas(?:es?|ed)|decreas(?:es?|ed)|"
+    r"reduc(?:es?|ed)|requires?|required|creat(?:es?|ed)|caus(?:es?|ed)|"
+    r"operates?|operated|target(?:s|ed)|breach(?:es|ed)|compromis(?:es?|ed)|"
+    r"exploit(?:s|ed)|deploys?|deployed|maintains?|maintained|holds?|held|"
+    r"grew|rose|fell|reached|remains?|remained|accounts? for|"
+    r"led to|resulted in)\b", re.I)
 
 # Recommendations are proposals, not claims about the world, so they carry no
 # evidence citation by design — the generator is explicitly instructed not to
@@ -76,6 +146,18 @@ IMPERATIVE_VERBS = (
     "maintain", "expand", "adopt", "introduce", "commission", "assess",
     "ensure", "conduct", "create", "build", "run", "track", "acquire",
     "mandate", "negotiate", "publish", "fund", "pilot", "procure",
+    # A closed verb list quietly withholds sections for using a synonym: the
+    # actions section was rejected for "Launch supplier training programmes".
+    "launch", "enforce", "embed", "extend", "integrate", "align", "audit",
+    "map", "baseline", "formalise", "formalize", "standardise", "standardize",
+    "designate", "assign", "appoint", "convene", "task", "instruct", "direct",
+    "issue", "revise", "update", "tighten", "restrict", "verify", "test",
+    "exercise", "rehearse", "resource", "staff", "invest", "allocate",
+    "escalate", "report", "record", "document", "share", "brief", "consult",
+    "engage", "contract", "certify", "accredit", "qualify", "screen", "vet",
+    "segment", "isolate", "patch", "harden", "instrument", "log", "add",
+    "apply", "set", "raise", "reduce", "limit", "cap", "phase", "retire",
+    "replace", "migrate", "consolidate", "centralise", "centralize",
 )
 _LIST_PREFIX = re.compile(r"^(\d+[\.\)]\s*|[-*+]\s*)?(\*\*)?\s*")
 MODAL_RECOMMENDATION = re.compile(
@@ -128,9 +210,16 @@ def sentences_of(markdown: str) -> List[str]:
             continue
         if "http://" in stripped or "https://" in stripped:
             continue                       # reference-style line outside the section
-        stripped = re.sub(r"^[-*+]\s+", "", stripped)
+        stripped = LIST_NUMBER.sub("", re.sub(r"^[-*+]\s+", "", stripped))
+        if BOLD_HEADING.match(stripped):
+            continue
         for part in re.split(r"(?<=[.!?])\s+(?=[A-Z\[])", stripped):
             part = part.strip()
+            # Per part, not per line: "Mandate clauses. Trigger: rising gaps."
+            # splits into two sentences and only the first sees a line start.
+            if CONDITION_LABEL.match(part):
+                continue
+            part = LABEL.sub("", BOLD_LABEL.sub("", part)).strip()
             if len(part) > 25:
                 out.append(part)
     return out
@@ -140,22 +229,33 @@ def sentences_of(markdown: str) -> List[str]:
 # deterministic checks
 # --------------------------------------------------------------------------
 def load_graph(sb, pillar) -> Dict[str, dict]:
+    """`pillar` may be one name or several.
+
+    A brief spanning two pillars cites objects from both. Loading one pillar's
+    graph would report every citation into the other as an unknown id, and the
+    section would be withheld for being correct.
+    """
+    pillars = [pillar] if isinstance(pillar, str) else list(pillar)
+
+    def scoped(table, cols):
+        q = sb.table(table).select(cols)
+        return (q.in_("pillar", pillars) if len(pillars) > 1
+                else q.eq("pillar", pillars[0])).execute().data
+
     graph = {}
-    for row in (sb.table("evidence")
-                .select("id,claim,class,confidence,env_layer,quote_span,pillar")
-                .eq("pillar", pillar).execute().data):
+    for row in scoped("evidence", "id,claim,class,confidence,env_layer,quote_span,pillar"):
         graph[row["id"]] = dict(row, kind="evidence")
-    for row in sb.table("signals").select("id,statement,pillar").eq("pillar", pillar).execute().data:
+    for row in scoped("signals", "id,statement,pillar"):
         graph[row["id"]] = dict(row, kind="signal")
-    for row in sb.table("findings").select("id,statement,pillar").eq("pillar", pillar).execute().data:
+    for row in scoped("findings", "id,statement,pillar"):
         graph[row["id"]] = dict(row, kind="finding")
     for row in sb.table("risks").select("id,statement").execute().data:
         graph[row["id"]] = dict(row, kind="risk")
-    for row in sb.table("trends").select("id,statement").eq("pillar", pillar).execute().data:
+    for row in scoped("trends", "id,statement"):
         graph[row["id"]] = dict(row, kind="trend")
-    for row in sb.table("uncertainties").select("id,question").eq("pillar", pillar).execute().data:
+    for row in scoped("uncertainties", "id,question"):
         graph[row["id"]] = dict(row, kind="uncertainty")
-    for row in sb.table("forecasts").select("id,statement").eq("pillar", pillar).execute().data:
+    for row in scoped("forecasts", "id,statement"):
         graph[row["id"]] = dict(row, kind="forecast")
     return graph
 
@@ -182,6 +282,8 @@ def check_unsourced(sentences) -> List[Violation]:
         if any(h in sentence.lower() for h in HEDGES):
             continue
         if is_recommendation(sentence):
+            continue
+        if is_meta_claim(sentence) or is_condition(sentence):
             continue
         out.append(Violation(
             check="UNSOURCED", severity="BLOCKER", sentence=sentence,
@@ -242,7 +344,7 @@ def check_gates(sb, sentences, pillar=None) -> List[Violation]:
     return out
 
 
-def check_section(markdown: str, graph) -> List[str]:
+def check_section(markdown: str, graph, allow_unsourced: bool = False) -> List[str]:
     """Blocking failures for ONE freshly drafted section.
 
     Deterministic only — no model call — so it is cheap enough to run inside the
@@ -254,9 +356,10 @@ def check_section(markdown: str, graph) -> List[str]:
     for v in check_citations(sentences, graph):
         out.append(v.detail[0].upper() + v.detail[1:] +
                    " — remove it or cite an id from the data.")
-    for v in check_unsourced(sentences):
-        out.append("This sentence states a fact with no citation: \"%s\""
-                   % v.sentence[:140])
+    if not allow_unsourced:
+        for v in check_unsourced(sentences):
+            out.append("This sentence states a fact with no citation: \"%s\""
+                       % v.sentence[:140])
     seen, uniq = set(), []
     for line in out:
         if line not in seen:

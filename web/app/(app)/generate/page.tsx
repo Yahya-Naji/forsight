@@ -1,5 +1,6 @@
 import { supabase } from "@/lib/supabase";
 import { PILLAR_LABEL } from "@/components/chips";
+import BriefChat from "@/components/BriefChat";
 
 export const revalidate = 0;
 export const dynamic = "force-dynamic";
@@ -44,41 +45,9 @@ export default async function Generate({ searchParams }: { searchParams?: { run?
   const counts = (run?.counts ?? {}) as Record<string, number>;
 
   return (
-    <div style={{ display: "grid", gridTemplateColumns: "360px 1fr", gap: 22, alignItems: "start" }}>
-      <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
-        <div>
-          <div className="kicker">New report</div>
-          <h1 className="display" style={{ fontWeight: 700, fontSize: 26, margin: "4px 0 0", letterSpacing: -0.4 }}>Generate a brief</h1>
-        </div>
-        <form className="card" style={{ padding: 20, display: "flex", flexDirection: "column", gap: 16 }} action="/api/generate" method="post">
-          <div>
-            <div style={{ fontSize: 12, fontWeight: 600, color: "var(--muted)" }}>Pillar</div>
-            <div style={{ display: "flex", gap: 6, marginTop: 8, flexWrap: "wrap" }}>
-              {Object.entries(PILLAR_LABEL).map(([key, name], i) => (
-                <label key={key} style={{
-                  fontSize: 12, fontWeight: 600, borderRadius: 999, padding: "7px 14px", cursor: "pointer",
-                  color: i === 0 ? "#fff" : "var(--muted)",
-                  background: i === 0 ? "var(--navy)" : "var(--paper)",
-                  border: i === 0 ? "1px solid var(--navy)" : "1px solid var(--line)",
-                }}>
-                  <input type="radio" name="pillar" value={key} defaultChecked={i === 0} style={{ display: "none" }} />
-                  {name}
-                </label>
-              ))}
-            </div>
-          </div>
-          <div>
-            <div style={{ fontSize: 12, fontWeight: 600, color: "var(--muted)" }}>Template</div>
-            <div className="row" style={{ justifyContent: "space-between", border: "1px solid var(--line)", borderRadius: 10, padding: "11px 14px", marginTop: 8, fontSize: 13.5 }}>
-              <span style={{ fontWeight: 600 }}>Strategic Foresight Brief</span>
-              <span style={{ color: "var(--ghost)", fontSize: 11 }}>7 sections</span>
-            </div>
-          </div>
-          <button className="pill-btn" type="submit">Run the pipeline</button>
-          <div style={{ fontSize: 11.5, color: "var(--faint)", lineHeight: 1.5 }}>
-            Sections that fail verification are withheld, never shipped. Open gates render as &ldquo;Customer Validation Required&rdquo;.
-          </div>
-        </form>
+    <div style={{ display: "grid", gridTemplateColumns: "1fr", gap: 22, alignItems: "start" }}>
+      <div style={{ gridColumn: "1 / -1", marginBottom: 20 }}>
+        <BriefChat />
       </div>
 
       <div className="aurora" style={{ padding: "28px 32px", minHeight: 560, display: "flex", flexDirection: "column" }}>

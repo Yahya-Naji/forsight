@@ -80,12 +80,46 @@ OPENING RULE — enforced automatically; a generic opener is rejected and redraf
   If your first sentence would still read sensibly with all the data deleted,
   it is the wrong sentence.
 
+SENTENCE DISCIPLINE — this is what gets sections rejected, so read it twice
+Every sentence you write must be ONE of these four kinds. There is no fifth
+kind, and a sentence that is none of them will be rejected:
+  1. A CITED CLAIM — a fact drawn from the data, carrying the id it came from.
+  2. A RECOMMENDATION — an imperative ("Mandate cyber-assurance clauses in
+     tier-one contracts"). Starts with a verb. Carries no evidence citation.
+  3. A LABELLED CONDITION — "Trigger: ...", "Falsifier: ...", "Watch: ...".
+     A condition to monitor, not a claim about the present.
+  4. A STATEMENT ABOUT THIS EVIDENCE BASE — "The evidence base does not
+     establish a UAE-specific rate", "Two claims are blocked by an open gate".
+THE "SO WHAT" LINE — where drafts fail most often
+A "So what:" line must do ONE of two things, and boosting is neither:
+  · name a CONSEQUENCE that follows from the cited finding, or
+  · name the DECISION the reader now faces.
+The failure mode is the booster sentence: "X is/are essential/critical/vital to
+Y". It asserts an evaluation no row supports, so it is rejected every time.
+  REJECTED: "Enhanced supplier assessments are essential to address systemic
+            vulnerabilities."  (asserts importance; cites nothing)
+  GOOD:     "So what: the exposure sits with tier-two suppliers, who fall
+            outside current contractual assurance [EV-014]."
+  GOOD:     "So what: Tawazun must decide whether assurance clauses apply at
+            contract award or at renewal."
+Never write that something is important. Say what follows from it.
+
+Editorial connective tissue is the fifth kind, and it is the reason drafts fail.
+  REJECTED: "Proactive assurance measures are crucial to prevent exploitation."
+  REJECTED: "Failure to address these vulnerabilities leaves infrastructure
+            exposed." (asserts a consequence no row states)
+  REJECTED: "The environment is shifting due to emerging dynamics."
+  REJECTED: "Enhanced protective measures are needed to mitigate disruption."
+Each of those asserts something with no source. Delete the sentence, or convert
+it into kind 2 by naming the action you actually mean. Prefer fewer, denser
+sentences over prose that has to be padded to flow.
+
 LABELS
 - The data is already written in reader-facing labels. Reproduce them exactly.
   Never write an underscored or all-capitals enum such as STRONG_EMERGING,
   ELECTRONIC_WARFARE or MEDIUM_HIGH.
 
-Section: {title}
+{brief_block}Section: {title}
 Instructions: {instructions}
 Data:
 {data}
@@ -98,11 +132,21 @@ RETRY_SUFFIX = """
 YOUR PREVIOUS DRAFT FAILED VERIFICATION. Fix exactly these problems:
 {failures}
 
-Cite ONLY evidence ids that appear in the data above. If no id supports a
-sentence, either remove the sentence or rewrite it as an action, which needs no
-citation. Do not invent ids."""
+Cite ONLY evidence ids that appear in the data above. Do not invent ids.
+
+For each sentence named above, choose one of four exits — do not simply reword it:
+  (a) attach the id from the data that actually supports it;
+  (b) delete it (usually right — it was connective padding);
+  (c) rewrite it as an imperative action, which needs no citation;
+  (d) rewrite it as a labelled condition ("Trigger: ...").
+A reworded assertion with no source fails again for the same reason."""
 
 MAX_RETRIES = 2
+
+# Sections whose subject is the evidence base itself. "Confirming this would
+# require data on exploitation rates" is a statement about what is missing —
+# demanding a citation for it is asking the writer to cite an absence.
+EPISTEMIC_SECTIONS = {"limits"}
 
 BANNED_OPENERS = (
     "enhanced", "in today", "it is imperative", "organisations must",
@@ -145,6 +189,50 @@ def _dedupe_gates(rows):
     return [{"gate_ids": ids, "blocks": blocks} for blocks, ids in seen.items()]
 
 
+def load_brief(sb, brief_id):
+    rows = sb.table("report_briefs").select("*").eq("id", brief_id).execute().data
+    if not rows:
+        raise SystemExit("brief %s not found" % brief_id)
+    return rows[0]
+
+
+STOP = {"the", "and", "for", "with", "that", "this", "from", "into", "their",
+        "risk", "risks", "uae", "defence", "defense"}
+
+
+def _relevant(rows, terms, fields=("claim", "statement", "question", "name"),
+              keep_at_least=6):
+    """Rows scored against the brief's focus terms.
+
+    Matching whole phrases fails: a brief asks about "cyber-assurance clauses"
+    and no source sentence contains that string. Terms are broken into their
+    significant words and rows are scored by how many distinct ones they carry,
+    so a row touching several parts of the brief outranks one that clips a
+    single common word.
+
+    Dropped rows are counted in the ledger rather than vanishing, and a filter
+    that would empty the section keeps the highest-scoring rows instead — an
+    empty section is worse than a loosely scoped one.
+    """
+    if not terms:
+        return rows, 0
+    tokens = {w for t in terms for w in str(t).lower().replace("-", " ").split()
+              if len(w) > 3 and w not in STOP}
+    if not tokens:
+        return rows, 0
+
+    scored = []
+    for r in rows:
+        blob = " ".join(str(r.get(f) or "") for f in fields).lower()
+        scored.append((sum(1 for w in tokens if w in blob), r))
+    hits = [r for n, r in scored if n > 0]
+
+    if len(hits) < keep_at_least:
+        scored.sort(key=lambda x: -x[0])
+        hits = [r for _, r in scored[:keep_at_least]]
+    return hits, len(rows) - len(hits)
+
+
 def _linked_ids(sb, section_key):
     """Rows explicitly linked to this section, if any links exist."""
     rows = (sb.table("links").select("to_id,to_type")
@@ -153,38 +241,54 @@ def _linked_ids(sb, section_key):
     return {r["to_id"] for r in rows}
 
 
-def fetch_inputs(sb, pillar, wanted, section_key):
+def fetch_inputs(sb, pillar, wanted, section_key, brief=None):
     """Return (data, ledger). Section-scoped when links exist, and honest in the
     ledger when they do not — the previous version passed every pillar row to
     every section while claiming to be bounded."""
     scope = _linked_ids(sb, section_key)
     scoped = bool(scope)
+    terms = (brief or {}).get("focus_terms") or []
     data, passed, withheld = {}, {}, {}
 
     def take(key, rows, has_id=True):
         available = len(rows)
         if scoped and has_id:
             rows = [r for r in rows if r.get("id") in scope]
+        # With a brief, rows unrelated to what was asked for are withheld —
+        # which is what finally makes the ledger's withheld count meaningful.
+        if terms and key in ("evidence", "signals", "findings", "risks",
+                             "forecasts", "uncertainties"):
+            rows, _ = _relevant(rows, terms)
         data[key] = rows
         passed[key] = len(rows)
-        if available - len(rows):
+        # One subtraction, counted once. Adding the scope drop and the relevance
+        # drop separately reported more rows withheld than were ever available.
+        if available > len(rows):
             withheld[key] = available - len(rows)
 
+    pillars = (brief or {}).get("pillars") or [pillar]
+
+    def rows_for(table, cols):
+        q = sb.table(table).select(cols)
+        return (q.in_("pillar", pillars) if len(pillars) > 1
+                else q.eq("pillar", pillars[0])).execute().data
+
     if "evidence" in wanted:
-        take("evidence", sb.table("evidence").select(
-            "id,claim,class,confidence,env_layer,quote_span")
-            .eq("pillar", pillar).execute().data)
+        take("evidence", rows_for("evidence",
+             "id,claim,class,confidence,env_layer,quote_span"))
     if "signals" in wanted:
-        take("signals", sb.table("signals").select("*").eq("pillar", pillar).execute().data)
+        take("signals", rows_for("signals", "*"))
     if "findings" in wanted:
-        take("findings", sb.table("findings").select("*").eq("pillar", pillar).execute().data)
+        take("findings", rows_for("findings", "*"))
+    if "uncertainties" in wanted:
+        take("uncertainties", rows_for("uncertainties", "id,question,why_it_matters"))
     if "risks" in wanted:
         take("risks", sb.table("risks").select("*").execute().data)
     if "forecasts" in wanted:
-        take("forecasts", sb.table("forecasts").select(
-            "id,statement,horizon,env_layer,plausibility,confidence,"
-            "falsifier,assumptions,rationale,basis")
-            .eq("pillar", pillar).order("horizon").execute().data)
+        take("forecasts", sorted(rows_for("forecasts",
+             "id,statement,horizon,env_layer,plausibility,confidence,"
+             "falsifier,assumptions,rationale,basis"),
+             key=lambda r: r.get("horizon") or ""))
     if "indicators" in wanted:
         rows = sb.table("indicators").select("*").execute().data
         # An indicator with no threshold cannot be monitored; rendering "TBD"
@@ -250,24 +354,47 @@ def build_references(sb, pillar, cited=None):
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--run-id", help="pipeline_runs row to report progress into")
-    ap.add_argument("--pillar", required=True)
-    ap.add_argument("--title", required=True)
+    ap.add_argument("--pillar", help="required unless --brief supplies pillars")
+    ap.add_argument("--title")
     ap.add_argument("--template", default="TPL-BRIEF-01")
+    ap.add_argument("--brief", help="report_briefs id — generate against a reader's brief")
     a = ap.parse_args()
     config.update_run(getattr(a, "run_id", None), stage="generate", status="RUNNING")
     sb = db()
+    if not a.pillar and not a.brief:
+        ap.error("--pillar is required unless --brief supplies one")
+    if not a.title and not a.brief:
+        ap.error("--title is required unless --brief supplies one")
     tpl = sb.table("report_templates").select("*").eq("id", a.template).execute().data[0]
 
-    graph = verify.load_graph(sb, a.pillar)
-    parts = [f"# {a.title}\n"]
+    brief = load_brief(sb, a.brief) if a.brief else None
+    if brief:
+        pillars = brief.get("pillars") or [a.pillar]
+        brief_block = (
+            "THE READER'S BRIEF — everything you write serves this:\n"
+            "  Question: %s\n  Decision it supports: %s\n  Audience: %s\n"
+            "  In scope: %s\n  Out of scope: %s\n\n"
+            % (brief.get("goal") or "—", brief.get("decision") or "—",
+               brief.get("audience") or "—", brief.get("in_scope") or "—",
+               brief.get("out_of_scope") or "—"))
+        print("brief: %s" % (brief.get("title") or brief["id"]))
+        print("  focus: %s" % ", ".join(brief.get("focus_terms") or []) or "—")
+    else:
+        pillars = [a.pillar]
+        brief_block = ""
+
+    graph = verify.load_graph(sb, pillars)
+    title = a.title or (brief or {}).get("title") or "Strategic brief"
+    parts = [f"# {title}\n"]
     ledgers = []
     for sec in tpl["sections"]:
         if sec["key"] == "references":
             cited = {c for led in ledgers for c in led["citations"]}
-            parts.append(f"## {sec['title']}\n\n{build_references(sb, a.pillar, cited)}")
+            refs = "\n\n".join(build_references(sb, p, cited) for p in pillars)
+            parts.append(f"## {sec['title']}\n\n{refs}")
             continue
 
-        data, ledger = fetch_inputs(sb, a.pillar, sec["inputs"], sec["key"])
+        data, ledger = fetch_inputs(sb, pillars[0], sec["inputs"], sec["key"], brief)
         # Raw enums never reach the model, so they cannot reach the page.
         payload = json.dumps(labels.humanise(data), default=str, indent=1)
         if len(payload) > 120000:
@@ -277,14 +404,16 @@ def main():
                 "silent truncation would drop evidence without telling anyone.")
 
         base = SECTION_PROMPT.format(
-            title=sec["title"], instructions=sec["instructions"], data=payload)
+            title=sec["title"], instructions=sec["instructions"], data=payload,
+            brief_block=brief_block)
 
         body_md, failures, attempt = "", [], 0
         while attempt <= MAX_RETRIES:
             prompt = base if not failures else base + RETRY_SUFFIX.format(
                 failures="\n".join("- " + f for f in failures))
             body_md = llm.text(prompt, effort="high", max_output_tokens=8000)
-            failures = (verify.check_section(body_md, graph)
+            failures = (verify.check_section(body_md, graph,
+                                             allow_unsourced=sec["key"] in EPISTEMIC_SECTIONS)
                         + opener_failures(body_md, sec["key"]))
             if not failures:
                 break
@@ -307,10 +436,12 @@ def main():
         ledger.update({"key": sec["key"], "title": sec["title"],
                        "inputs": sec["inputs"], "instructions": sec["instructions"],
                        "chars": len(payload), "retries": attempt,
-                       "withheld": withheld_section, "failures": failures,
+                       "section_withheld": withheld_section, "failures": failures,
                        "citations": sorted(set(ANY_EV.findall(body_md)))})
         ledgers.append(ledger)
         flag = "WITHHELD" if withheld_section else ("scoped" if ledger["scoped"] else "UNSCOPED")
+        if ledger["withheld"]:
+            flag += " −%d" % sum(ledger["withheld"].values())
         print(f"drafted: {sec['title']:<38} {ledger['passed']} {flag}"
               + (f" (retries {attempt})" if attempt else ""))
 
@@ -318,21 +449,28 @@ def main():
     gates_open = sb.table("validation_gates").select("id").eq("status", "OPEN").execute().data
     status = "GATES_OPEN" if gates_open else "DRAFT"
     rep = sb.table("reports").insert({
-        "template_id": a.template, "pillar": a.pillar, "title": a.title,
-        "status": status, "body_md": body}).execute().data[0]
+        "template_id": a.template, "pillar": pillars[0], "title": title,
+        "status": status, "body_md": body,
+        "brief_id": brief["id"] if brief else None}).execute().data[0]
+    if brief:
+        sb.table("report_briefs").update({"status": "USED"}).eq("id", brief["id"]).execute()
 
     for led in ledgers:
         sb.table("generation_ledger").insert({
             "report_id": rep["id"], "section_key": led["key"],
             "section_title": led["title"], "inputs_declared": led["inputs"],
             "rows_passed": led["passed"], "rows_withheld": led["withheld"],
+            # `withheld` is the per-input row counts; `section_withheld` is the
+            # verification verdict. They shared a key and the flag won, which is
+            # why rows_withheld was false on every row ever written.
             "scoped": led["scoped"], "instructions": led["instructions"],
             "citations_emitted": led["citations"], "chars_sent": led["chars"],
-            "retries": led["retries"], "withheld": led["withheld"],
+            "retries": led["retries"], "withheld": led["section_withheld"],
             "failures": led["failures"]}).execute()
 
     config.update_run(getattr(a, "run_id", None), report_id=rep["id"],
-                      counts={"generate": len([l for l in ledgers if not l["withheld"]])})
+                      counts={"generate": len([l for l in ledgers
+                                               if not l.get("section_withheld")])})
     print(f"\nreport {rep['id']} saved (status={status}, {len(body)} chars, "
           f"{len(ledgers)} ledger rows)")
 
