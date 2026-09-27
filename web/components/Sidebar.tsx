@@ -42,6 +42,7 @@ export default function Sidebar({ onAsk }: { onAsk?: () => void }) {
             }}>{name}</Link>
           ))}
         </div>
+        <Item href="/sources" label="Sources" active={path.startsWith("/sources")} />
         <Item href="/evidence" label="Evidence" active={path.startsWith("/evidence")} />
         <Item href="/generate" label="Generate" active={path.startsWith("/generate")} />
         <Item href="/reports" label="Reports" active={path.startsWith("/reports")} />
