@@ -5,6 +5,7 @@ import OntologyContract from "@/components/OntologyContract";
 import StageTrace, { type StageRow } from "@/components/StageTrace";
 import CalibrationPanel, { type ForecastRow } from "@/components/CalibrationPanel";
 import AssemblyLedger, { type LedgerRow } from "@/components/AssemblyLedger";
+import LiveRun from "@/components/LiveRun";
 import ScorecardStrip from "@/components/ScorecardStrip";
 import { PILLAR_LABEL } from "@/components/chips";
 
@@ -214,6 +215,7 @@ export default async function Engine({
         {run.data?.[0] && (
           <div style={{ marginTop: 14, fontSize: 12.5, color: "#C6CFF2" }}>
             Latest run · {run.data[0].status}
+            <LiveRun status={run.data[0].status} />
             {run.data[0].stage ? ` at ${run.data[0].stage}` : ""}
             {run.data[0].error ? ` — ${run.data[0].error}` : ""}
           </div>
