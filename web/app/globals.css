@@ -71,7 +71,7 @@
   h1,h2,h3,.display { font-family:'Space Grotesk','Instrument Sans',sans-serif; }
 }
 
-:root{ --card:var(--card); --line:var(--line); --line-soft:var(--line-soft); --ink-2:var(--ink-2); --muted:var(--muted); --faint:var(--faint); --ghost:var(--ghost); --accent-deep:var(--accent-deep); --accent-wash:var(--accent-wash); --aurora:var(--aurora); --amber-bg:var(--amber-bg); --amber-line:var(--amber-line); --amber-chip:var(--amber-chip); --green-bg:var(--green-bg); --green-line:var(--green-line); --green-chip:var(--green-chip); --uae-bg:var(--uae-bg); --global:var(--global); --global-bg:var(--global-bg);
+:root{
   --radius:14px;
   /* Ids, rule names and counts are read as tokens, not prose — they want a face
      where a zero cannot be an O and columns of digits line up. */

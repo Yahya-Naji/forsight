@@ -66,19 +66,25 @@ export default function StageTrace({ rows }: { rows: StageRow[] }) {
           const dropped = row.refusals.reduce((a, r) => a + r.count, 0);
 
           return (
-            <div key={stage.key}
-                 className={cn("grid grid-cols-[96px_1fr]", i > 0 && "border-t border-line-soft")}>
+            // The divider is drawn on the text column only. Run across the rail
+            // it cuts the funnel into slices, which is exactly the look the
+            // taper is meant to replace.
+            <div key={stage.key} className="grid grid-cols-[96px_1fr]">
               <div className="relative border-r border-line-soft bg-[#FBFCFE]">
+                {/* One continuous funnel, not a stack of tiles.
+                    Each band previously carried its own stroke and cap lines,
+                    which outlined every segment separately and read as unrelated
+                    blocks — the taper was there but the boundaries fought it.
+                    Fill alone now carries the shape, and the layer colour is the
+                    only thing that changes at a boundary. preserveAspectRatio is
+                    off so the 0-100 box stretches to whatever height the prose
+                    needs while the x-axis stays fixed, which is what keeps two
+                    bands holding the same count exactly the same width. */}
                 <svg viewBox="0 0 100 100" preserveAspectRatio="none" aria-hidden
                      className="absolute inset-0 h-full w-full">
                   <polygon
                     points={`${50 - inW},0 ${50 + inW},0 ${50 + outW},100 ${50 - outW},100`}
-                    fill={l.spine} fillOpacity="0.85"
-                    stroke={l.fg} strokeWidth="0.5" strokeOpacity="0.45" />
-                  {i === 0 && <line x1={50 - inW} y1="0" x2={50 + inW} y2="0"
-                                    stroke={l.fg} strokeWidth="1.2" />}
-                  {i === rows.length - 1 && <line x1={50 - outW} y1="100" x2={50 + outW} y2="100"
-                                                  stroke={l.fg} strokeWidth="1.2" />}
+                    fill={l.spine} fillOpacity="0.92" shapeRendering="crispEdges" />
                 </svg>
                 <Dot state={row.state} />
                 {typeof row.flowing === "number" && (
@@ -90,7 +96,8 @@ export default function StageTrace({ rows }: { rows: StageRow[] }) {
                 )}
               </div>
 
-              <div className="min-w-0 px-4 pb-[15px] pt-[13px]">
+              <div className={cn("min-w-0 px-4 pb-[15px] pt-[13px]",
+                                 i > 0 && "border-t border-line-soft")}>
                 <div className="flex flex-wrap items-center gap-2.5">
                   <span className="font-mono text-2xs text-ghost">
                     {String(i + 1).padStart(2, "0")}
