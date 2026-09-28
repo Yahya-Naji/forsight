@@ -26,6 +26,14 @@ export type StageRow = {
 
 const MAX_W = 46;   // spine half-width at its widest, in viewBox units
 
+// The width change happens over the first slice of the band, not across all of
+// it. Spread over a 250px-tall band, a 14px step per side is a slope so shallow
+// it reads as one edge wobbling rather than as a funnel narrowing — and because
+// the eye tracks the straighter side, it looks asymmetric even though the
+// polygon is symmetric about x=50 by construction. Confined to a neck, the same
+// step is steep, obvious and unmistakably two-sided.
+const NECK = 16;    // % of band height given over to the transition
+
 /** Square root, so an order-of-magnitude drop stays legible instead of vanishing. */
 function halfWidth(n: number | null, peak: number) {
   if (!n || n <= 0 || peak <= 0) return 3;
@@ -79,12 +87,23 @@ export default function StageTrace({ rows }: { rows: StageRow[] }) {
                     only thing that changes at a boundary. preserveAspectRatio is
                     off so the 0-100 box stretches to whatever height the prose
                     needs while the x-axis stays fixed, which is what keeps two
-                    bands holding the same count exactly the same width. */}
+                    bands holding the same count exactly the same width.
+
+                    No shapeRendering="crispEdges" here: it disables
+                    anti-aliasing and snaps edges to device pixels, and under a
+                    heavily non-uniform stretch it snapped the two slanted sides
+                    differently — the taper came out sloping on the left with a
+                    vertical right edge, from a polygon that is symmetric about
+                    x=50 by construction. */}
                 <svg viewBox="0 0 100 100" preserveAspectRatio="none" aria-hidden
                      className="absolute inset-0 h-full w-full">
                   <polygon
-                    points={`${50 - inW},0 ${50 + inW},0 ${50 + outW},100 ${50 - outW},100`}
-                    fill={l.spine} fillOpacity="0.92" shapeRendering="crispEdges" />
+                    points={[
+                      `${50 - inW},0`, `${50 + inW},0`,
+                      `${50 + outW},${NECK}`, `${50 + outW},100`,
+                      `${50 - outW},100`, `${50 - outW},${NECK}`,
+                    ].join(" ")}
+                    fill={l.spine} fillOpacity="0.92" />
                 </svg>
                 <Dot state={row.state} />
                 {typeof row.flowing === "number" && (
