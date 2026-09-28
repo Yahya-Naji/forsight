@@ -4,17 +4,18 @@ import { Badge } from "@/components/ui/badge";
 import { SectionHead } from "@/components/ui/section";
 import { cn } from "@/lib/utils";
 
-// The pipeline drawn as attrition rather than as progress.
+// The pipeline as a list, with the attrition stated rather than drawn.
 //
-// A row of green ticks says the run finished, which is the least interesting
-// thing about it. What a reader needs is how much was dropped and by which rule
-// — 85 candidate images admitted 7, and a checklist shows that as one tick. So
-// the spine's width encodes how many objects are still carried at each stage,
-// and everything refused leaves it as a labelled chip.
+// This carried a tapering funnel for three revisions. The geometry was correct
+// — symmetric about the centre, equal counts at equal widths — and it still
+// read wrong at every size, because the width change across a tall band is a
+// slope too shallow to see, and the eye reports the straighter side as the
+// truth. A picture that needs explaining is not doing the job of a picture.
 //
-// The taper is drawn in a normalised 0–100 viewBox with preserveAspectRatio
-// switched off, so one SVG fills whatever height the band's prose needs. The
-// layer colours stay inline because they are data from lib/engine, not classes.
+// So the drop is a number now: 132 carried, then 63 with a -69 beside it. That
+// is the same fact the funnel was trying to convey, it is exact rather than
+// suggestive, and it survives any band height. The rail keeps only what it was
+// always good at — marking where each stage sits and how far a run has reached.
 
 export type StageRow = {
   stage: Stage;
@@ -24,26 +25,10 @@ export type StageRow = {
   detail?: React.ReactNode;
 };
 
-const MAX_W = 46;   // spine half-width at its widest, in viewBox units
-
-// The width change happens over the first slice of the band, not across all of
-// it. Spread over a 250px-tall band, a 14px step per side is a slope so shallow
-// it reads as one edge wobbling rather than as a funnel narrowing — and because
-// the eye tracks the straighter side, it looks asymmetric even though the
-// polygon is symmetric about x=50 by construction. Confined to a neck, the same
-// step is steep, obvious and unmistakably two-sided.
-const NECK = 16;    // % of band height given over to the transition
-
-/** Square root, so an order-of-magnitude drop stays legible instead of vanishing. */
-function halfWidth(n: number | null, peak: number) {
-  if (!n || n <= 0 || peak <= 0) return 3;
-  return Math.max(3, Math.sqrt(n / peak) * MAX_W);
-}
-
 function Dot({ state = "idle" }: { state?: StageRow["state"] }) {
   return (
     <span aria-hidden className={cn(
-      "absolute left-1/2 top-4 z-[2] h-[13px] w-[13px] -translate-x-1/2 rounded-full",
+      "relative z-[2] h-[13px] w-[13px] shrink-0 rounded-full",
       state === "idle"
         ? "border-[1.5px] border-[#C9D0E4] bg-card"
         : "border-2 border-card shadow-[0_0_0_3px_rgba(255,255,255,.9)]",
@@ -54,63 +39,46 @@ function Dot({ state = "idle" }: { state?: StageRow["state"] }) {
 }
 
 export default function StageTrace({ rows }: { rows: StageRow[] }) {
-  const peak = Math.max(1, ...rows.map(r => r.flowing ?? 0));
 
   return (
     <section>
       <SectionHead kicker="The run, stage by stage"
                    title="What each stage refused, and which rule refused it">
-        The band narrows as objects are dropped. Everything leaving it is written to the
-        refusal ledger with the rule that decided, because what a brief leaves out is
-        part of what it reports.
+        Each stage shows what it carried forward and, beside it, how many objects it
+        dropped. Everything that left is written to the refusal ledger with the rule
+        that decided, because what a brief leaves out is part of what it reports.
       </SectionHead>
 
       <Card className="overflow-hidden p-0">
         {rows.map((row, i) => {
           const { stage } = row;
           const l = LAYER[stage.layer];
-          const inW = halfWidth(i === 0 ? row.flowing : rows[i - 1].flowing ?? row.flowing, peak);
-          const outW = halfWidth(row.flowing, peak);
+          const prev = i > 0 ? rows[i - 1].flowing : null;
+          const drop = (prev != null && row.flowing != null && prev > row.flowing)
+            ? prev - row.flowing : 0;
           const dropped = row.refusals.reduce((a, r) => a + r.count, 0);
 
           return (
-            // The divider is drawn on the text column only. Run across the rail
-            // it cuts the funnel into slices, which is exactly the look the
-            // taper is meant to replace.
-            <div key={stage.key} className="grid grid-cols-[96px_1fr]">
-              <div className="relative border-r border-line-soft bg-[#FBFCFE]">
-                {/* One continuous funnel, not a stack of tiles.
-                    Each band previously carried its own stroke and cap lines,
-                    which outlined every segment separately and read as unrelated
-                    blocks — the taper was there but the boundaries fought it.
-                    Fill alone now carries the shape, and the layer colour is the
-                    only thing that changes at a boundary. preserveAspectRatio is
-                    off so the 0-100 box stretches to whatever height the prose
-                    needs while the x-axis stays fixed, which is what keeps two
-                    bands holding the same count exactly the same width.
-
-                    No shapeRendering="crispEdges" here: it disables
-                    anti-aliasing and snaps edges to device pixels, and under a
-                    heavily non-uniform stretch it snapped the two slanted sides
-                    differently — the taper came out sloping on the left with a
-                    vertical right edge, from a polygon that is symmetric about
-                    x=50 by construction. */}
-                <svg viewBox="0 0 100 100" preserveAspectRatio="none" aria-hidden
-                     className="absolute inset-0 h-full w-full">
-                  <polygon
-                    points={[
-                      `${50 - inW},0`, `${50 + inW},0`,
-                      `${50 + outW},${NECK}`, `${50 + outW},100`,
-                      `${50 - outW},100`, `${50 - outW},${NECK}`,
-                    ].join(" ")}
-                    fill={l.spine} fillOpacity="0.92" />
-                </svg>
+            <div key={stage.key} className="grid grid-cols-[104px_1fr]">
+              <div className="relative flex flex-col items-center border-r border-line-soft
+                              bg-[#FBFCFE] px-2 pt-[15px]">
+                {/* one continuous line through every stage, so the rail reads as
+                    a single run rather than a column of unrelated markers */}
+                <span aria-hidden className={cn("absolute left-1/2 w-px -translate-x-1/2 bg-line",
+                  i === 0 ? "top-[22px] bottom-0" : i === rows.length - 1 ? "top-0 h-[22px]" : "inset-y-0")} />
                 <Dot state={row.state} />
                 {typeof row.flowing === "number" && (
-                  <span className="absolute bottom-2 left-1/2 -translate-x-1/2 rounded
-                                   border bg-white/95 px-[5px] py-px font-mono text-xs font-bold"
-                        style={{ color: l.fg, borderColor: l.line }}>
-                    {row.flowing}
+                  <span className="relative mt-[22px] flex flex-col items-center gap-0.5">
+                    <span className="rounded border bg-card px-[6px] py-px font-mono text-xs
+                                     font-bold tabular-nums"
+                          style={{ color: l.fg, borderColor: l.line }}>
+                      {row.flowing}
+                    </span>
+                    {drop > 0 && (
+                      <span className="font-mono text-2xs tabular-nums text-amber-ink">
+                        −{drop}
+                      </span>
+                    )}
                   </span>
                 )}
               </div>
