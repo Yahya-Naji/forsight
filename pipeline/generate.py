@@ -418,6 +418,11 @@ def load_brief(sb, brief_id):
 STOP = {"the", "and", "for", "with", "that", "this", "from", "into", "their",
         "risk", "risks", "uae", "defence", "defense"}
 
+# Below this many genuinely matching rows, the graph does not hold the subject
+# the brief asked about and the section is blocked rather than filled with the
+# nearest thing available.
+MIN_ON_TOPIC = 3
+
 
 def _relevant(rows, terms, fields=("claim", "statement", "question", "name"),
               keep_at_least=6):
@@ -446,7 +451,17 @@ def _relevant(rows, terms, fields=("claim", "statement", "question", "name"),
         scored.append((sum(1 for w in tokens if w in blob), r))
     hits = [r for n, r in scored if n > 0]
 
+    # A brief whose subject the graph does not hold must be REFUSED, not
+    # back-filled. Keeping the highest-scoring rows is right when a brief sits
+    # slightly off its evidence; it is wrong when almost nothing matches, and it
+    # produced a Counter-UAS report written entirely from the cybersecurity
+    # graph — no jamming, no interceptors, no sensors, under a Counter-UAS
+    # heading. Substituting evidence is worse than having none, because the
+    # reader cannot see it happened.
     if len(hits) < keep_at_least:
+        matched = len(hits)
+        if matched < MIN_ON_TOPIC:
+            return [], len(rows)          # caller turns this into a refusal
         scored.sort(key=lambda x: -x[0])
         hits = [r for _, r in scored[:keep_at_least]]
     return hits, len(rows) - len(hits)
@@ -467,7 +482,7 @@ def fetch_inputs(sb, pillar, wanted, section_key, brief=None):
     scope = _linked_ids(sb, section_key)
     scoped = bool(scope)
     terms = (brief or {}).get("focus_terms") or []
-    data, passed, withheld = {}, {}, {}
+    data, passed, withheld, off_topic = {}, {}, {}, []
 
     def take(key, rows, has_id=True):
         available = len(rows)
@@ -478,6 +493,8 @@ def fetch_inputs(sb, pillar, wanted, section_key, brief=None):
         if terms and key in ("evidence", "signals", "findings", "risks",
                              "forecasts", "uncertainties"):
             rows, _ = _relevant(rows, terms)
+        if terms and not rows and available:
+            off_topic.append(key)
         data[key] = rows
         passed[key] = len(rows)
         # One subtraction, counted once. Adding the scope drop and the relevance
@@ -596,7 +613,8 @@ def fetch_inputs(sb, pillar, wanted, section_key, brief=None):
         if len(gates) - len(mine):
             withheld["gates"] = len(gates) - len(mine)
 
-    return data, {"scoped": scoped, "passed": passed, "withheld": withheld}
+    return data, {"scoped": scoped, "passed": passed, "withheld": withheld,
+                  "off_topic": off_topic}
 
 
 def embed_figures(sb, markdown: str, pillars):
@@ -737,7 +755,8 @@ def main():
             title=sec["title"], instructions=sec["instructions"], data=payload,
             brief_block=brief_block)
         jobs.append({"sec": sec, "data": data, "ledger": ledger,
-                     "payload": payload, "base": base})
+                     "payload": payload, "base": base,
+                     "off_topic": ledger.get("off_topic") or []})
 
     # ---- phase 2: draft and verify, concurrently ---------------------------
     # Sections are independent — only the reference list depends on the others,
@@ -759,6 +778,16 @@ def main():
 
     def _draft_section(job):
         sec, data = job["sec"], job["data"]
+        if job["off_topic"]:
+            # Named, not silent: the reader sees which inputs the brief's subject
+            # found no evidence for.
+            miss = ", ".join(job["off_topic"])
+            return {"body": "", "attempt": 0, "notes": [],
+                    "failures": ["The evidence base does not cover this brief's "
+                                 "subject for: %s. Section blocked rather than "
+                                 "written from unrelated rows." % miss],
+                    "log": ["  ⊘ %s: no on-topic %s — section blocked"
+                            % (sec["key"], miss)]}
         base, log = job["base"], []
         cached = cache_get(base) if not a.fresh else None
         if cached:
