@@ -27,6 +27,7 @@ from pydantic import BaseModel, Field
 
 import config
 import labels
+import decisions
 import llm
 from config import db
 
@@ -233,11 +234,47 @@ def admit(sb, pillar: str, proposals: List[ForecastProposal], uae_gate_open: boo
     valid_unc = {u["id"] for u in sb.table("uncertainties").select("id").eq("pillar", pillar).execute().data}
     strength_of = {s["id"]: s["strength"] for s in
                    sb.table("signals").select("id,strength").eq("pillar", pillar).execute().data}
+    # Gate 4 judges the inference, so it needs the signal TEXT, not the id. Keyed
+    # the same way as sig_lookup so a proposal referencing a statement rather
+    # than an id still resolves.
+    sig_statement = {}
+    for row in sb.table("signals").select("id,statement").eq("pillar", pillar).execute().data:
+        sig_statement[row["id"]] = row["statement"]
+        sig_statement[row["statement"]] = row["statement"]
+        sig_statement[row["statement"].strip().rstrip(".")] = row["statement"]
     if not sig_lookup:
         print("  no signals in the graph — nothing to forecast from")
 
+    # JEV GATE 4 — does the projection follow from the signals it names?
+    #
+    # calibrate() scores how far to trust a forecast; it never asks whether the
+    # inference holds at all. That question comes first: a projection that does
+    # not follow from its signals should not be scored, because a plausibility
+    # band on an unsupported leap is a number lending credibility to a guess.
+    support = {}
+    try:
+        support = decisions.gate4_forecast_support(proposals, sig_statement)
+    except Exception as exc:
+        # A gate that cannot run must not silently wave everything through.
+        print("  ! Jev gate 4 unavailable (%s) — forecasts admitted UNGATED"
+              % str(exc)[:80])
+        _gap(sb, pillar, "Jev gate 4 did not run; forecasts for this pillar were "
+                         "admitted without an inference check: %s" % str(exc)[:200])
+
     admitted = 0
-    for p in proposals:
+    for idx, p in enumerate(proposals):
+        verdict = support.get(idx)
+        if verdict is not None and (not verdict.follows
+                                    or verdict.probability < decisions.FORECAST_SUPPORT_THRESHOLD):
+            _gap(sb, pillar,
+                 "JEV GATE 4 refused — the projection does not follow from its signals "
+                 "(p=%.2f): %s%s" % (verdict.probability, p.statement[:200],
+                                     (" | unsupported leap: " + verdict.unsupported_leap)
+                                     if verdict.unsupported_leap else ""),
+                 )
+            print("  JEV gate4 REFUSED p=%.2f  %s" % (verdict.probability, p.statement[:66]))
+            continue
+
         sigs = list(dict.fromkeys(
             sig_lookup.get(s) or sig_lookup.get(s.strip().rstrip("."))
             for s in p.signal_ids

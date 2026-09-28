@@ -1,8 +1,18 @@
 """Jev decision gates — typed, probabilistic judgements with explicit thresholds.
 
-Gate 3 (same-fact corroboration merge) is implemented here. Gates 1 and 2
-(relevance triage, quote-supports-claim entailment) are reserved for the
-decision-layer workstream and are not implemented in this file.
+Gate 3 (same-fact corroboration merge) and Gate 4 (forecast support) are
+implemented here. Gates 1 and 2 (relevance triage, quote-supports-claim
+entailment) are reserved for the decision-layer workstream and are not
+implemented in this file.
+
+WHY GATE 4 MATTERS: a forecast is the one object in this system that asserts
+something nobody has observed yet, which makes it the easiest place for a
+plausible sentence to pass as an analysed one. calibrate() scores HOW FAR to
+trust a forecast from corroboration breadth and horizon, but it never asks the
+prior question — does this projection actually follow from the signals it
+claims to rest on? Gate 4 asks exactly that, as a typed probability with a
+stated threshold, so the judgement is recorded and arguable rather than implied
+by a score.
 
 WHY GATE 3 MATTERS: extraction emits one evidence row per claim it finds, so a
 single article yields several rows that restate one fact. Left alone, the
@@ -25,6 +35,11 @@ from config import db
 
 SAME_FACT_THRESHOLD = 0.85
 
+# Below this, the projection does not follow from its signals well enough to be
+# admitted. Deliberately not 0.5: a forecast is an assertion about a future
+# nobody can check yet, so the burden sits higher than "more likely than not".
+FORECAST_SUPPORT_THRESHOLD = 0.70
+
 
 class SameFactVerdict(BaseModel):
     same_fact: bool
@@ -42,6 +57,75 @@ class PairJudgement(BaseModel):
 
 class MergeBatch(BaseModel):
     judgements: List[PairJudgement] = Field(default_factory=list)
+
+
+class SupportVerdict(BaseModel):
+    """One forecast judged against the signals it names."""
+    index: int
+    follows: bool
+    probability: float = Field(ge=0.0, le=1.0)
+    reason: str = Field(max_length=300)
+    # What the projection adds beyond its signals. Named so the refusal is
+    # readable: "assumes a rate of change the signals do not establish".
+    unsupported_leap: str = Field(default="", max_length=300)
+
+
+class SupportBatch(BaseModel):
+    verdicts: List[SupportVerdict] = Field(default_factory=list)
+
+
+GATE4_PROMPT = """You are auditing forecasts against the signals they rest on.
+
+For each numbered item you are given a PROJECTION and the admitted SIGNALS it
+names. Decide whether the projection actually FOLLOWS from those signals.
+
+Judge the inference, not the plausibility. A projection can be entirely
+reasonable about the world and still not follow from the signals attached to it
+— that is the case this gate exists to catch. Mark it as not following when the
+projection:
+  · assumes a RATE or SCALE of change the signals do not establish;
+  · extends from one actor, sector or geography to a broader population;
+  · adds a causal step the signals do not contain;
+  · states as a trajectory what the signals record as a single observation.
+
+Direction and continuation ARE supported: signals showing a trend support a
+projection that the trend continues, at the pace the signals indicate.
+
+probability is your confidence that it follows, between 0 and 1.
+unsupported_leap names the step the signals do not carry, or "" if none.
+
+{items}
+"""
+
+
+def gate4_forecast_support(proposals, signal_lookup, batch_size: int = 12):
+    """Judge each proposal against its own signals.
+
+    Returns {index: SupportVerdict}. The caller decides admission — this
+    function never writes, so the threshold stays visible at the call site
+    rather than buried in the gate.
+    """
+    items, meta = [], []
+    for i, p in enumerate(proposals):
+        sigs = [signal_lookup[s] for s in getattr(p, "signal_ids", []) if s in signal_lookup]
+        if not sigs:
+            continue
+        meta.append(i)
+        items.append(
+            "[%d]\nPROJECTION: %s\nHORIZON: %s\nSIGNALS:\n%s"
+            % (len(meta) - 1, p.statement, getattr(p, "horizon", "?"),
+               "\n".join("  - %s" % s for s in sigs)))
+
+    out = {}
+    for start in range(0, len(items), batch_size):
+        chunk = items[start:start + batch_size]
+        result = llm.structured(GATE4_PROMPT.format(items="\n\n".join(chunk)),
+                                SupportBatch, effort="high")
+        for v in result.verdicts:
+            real = start + v.index
+            if 0 <= real < len(meta):
+                out[meta[real]] = v
+    return out
 
 
 PROMPT = """You are Gate 3 of an evidence pipeline: same-fact corroboration.

@@ -62,9 +62,9 @@ export const STAGES: Stage[] = [
   },
   {
     key: "gate1", name: "Gate 1 · relevance", layer: "NEURAL",
-    sub: "Cheap typed triage before anything expensive runs",
-    decidedIn: "decisions.py · Jev gate 1",
-    refuses: "Documents with no bearing on any live question, so extraction is never paid for twice.",
+    sub: "Cheap typed triage before anything expensive runs — NOT YET IMPLEMENTED",
+    decidedIn: "decisions.py · reserved",
+    refuses: "Nothing yet. This stage is reserved for the decision-layer workstream and no code implements it, so it currently refuses nothing and drops nothing. It is shown because the pipeline is described honestly or not at all.",
   },
   {
     key: "extract", name: "Extract", layer: "NEURAL",
@@ -75,9 +75,9 @@ export const STAGES: Stage[] = [
   },
   {
     key: "gate2", name: "Gate 2 · quote check", layer: "NEURAL",
-    sub: "Each claim must be entailed by the quote it cites",
-    decidedIn: "decisions.py · Jev gate 2",
-    refuses: "Claims their own source does not support. This is where a plausible paraphrase is separated from a supported one.",
+    sub: "Each claim must be entailed by the quote it cites — NOT YET IMPLEMENTED",
+    decidedIn: "decisions.py · reserved",
+    refuses: "Nothing yet. The entailment check does run, but at generation and audit time in verify.py rather than here as a gate on extraction.",
   },
   {
     key: "rules", name: "Rules & gates", layer: "SYMBOLIC",
@@ -94,9 +94,9 @@ export const STAGES: Stage[] = [
   },
   {
     key: "forecast", name: "Forecast", layer: "SYMBOLIC",
-    sub: "Plausibility computed from corroboration and horizon, never asserted",
-    decidedIn: "forecast.py · calibrate()",
-    refuses: "Forecasts with no admitted signal behind them, UAE-layer forecasts while the gate is open, and statements left with an unfilled placeholder.",
+    sub: "Jev gate 4 checks the projection follows from its signals; plausibility is then computed, never asserted",
+    decidedIn: "decisions.py · gate4 → forecast.py · calibrate()",
+    refuses: "Projections that do not follow from the signals they name — a population leap, an invented causal step, a rate the signals never established — refused below p=0.70 with the leap named. Then: forecasts with no admitted signal behind them, UAE-layer forecasts while the gate is open, and statements left with an unfilled placeholder.",
     produces: "forecasts",
   },
   {
