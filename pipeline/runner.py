@@ -93,6 +93,25 @@ def execute(run) -> int:
     return subprocess.call(cmd, cwd=HERE)
 
 
+HEARTBEAT = os.path.join(os.path.dirname(HERE), "out", ".runner-alive")
+
+
+def beat():
+    """Touch a file the console can stat.
+
+    A queued row that never moves looks identical whether the runner is dead or
+    merely busy, and "Queued" forever is the worst thing this console can show —
+    it is the one state that tells the viewer nothing. The console reads this
+    file's age to say which it is.
+    """
+    try:
+        os.makedirs(os.path.dirname(HEARTBEAT), exist_ok=True)
+        with open(HEARTBEAT, "w") as fh:
+            fh.write(str(time.time()))
+    except OSError:
+        pass
+
+
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--once", action="store_true", help="take one queued run and exit")
@@ -102,6 +121,7 @@ def main():
 
     print("runner ready — polling for queued runs every %.0fs (ctrl-c to stop)" % a.interval)
     while True:
+        beat()
         run = claim(sb)
         if run is None:
             if a.once:
@@ -110,6 +130,7 @@ def main():
             time.sleep(a.interval)
             continue
 
+        beat()
         try:
             code = execute(run)
         except Exception as exc:                       # noqa: BLE001

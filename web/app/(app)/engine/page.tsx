@@ -6,6 +6,7 @@ import StageTrace, { type StageRow } from "@/components/StageTrace";
 import CalibrationPanel, { type ForecastRow } from "@/components/CalibrationPanel";
 import AssemblyLedger, { type LedgerRow } from "@/components/AssemblyLedger";
 import LiveRun from "@/components/LiveRun";
+import { runnerAlive } from "@/lib/runner";
 import ScorecardStrip from "@/components/ScorecardStrip";
 import { PILLAR_LABEL } from "@/components/chips";
 
@@ -123,6 +124,8 @@ export default async function Engine({
   };
 
   const sc = scorecard.data?.[0] as any;
+  const waiting = run.data?.[0]?.status === "QUEUED";
+  const noRunner = waiting && !runnerAlive();
 
   const rows: StageRow[] = STAGES.map((stage, i) => ({
     stage,
@@ -210,6 +213,18 @@ export default async function Engine({
             {searchParams.error === "no-service-key"
               ? "Set SUPABASE_SERVICE_KEY to record runs — the browser key cannot write."
               : `Could not queue the run: ${searchParams.error}`}
+          </div>
+        )}
+        {noRunner && (
+          <div className="mt-3.5 rounded-xl border border-[rgba(255,183,77,.35)]
+                          bg-[rgba(255,183,77,.12)] px-4 py-3 text-sm leading-relaxed
+                          text-[#FFC96B]">
+            <b>This run is queued but nothing is executing it.</b> The console records
+            the request; a runner does the work. Start it with{" "}
+            <code className="font-mono text-xs">npm run dev</code> in{" "}
+            <code className="font-mono text-xs">web/</code>, which starts both — or{" "}
+            <code className="font-mono text-xs">python runner.py</code> in{" "}
+            <code className="font-mono text-xs">pipeline/</code> on its own.
           </div>
         )}
         {run.data?.[0] && (

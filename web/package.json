@@ -2,9 +2,11 @@
   "name": "foresight-web",
   "private": true,
   "scripts": {
-    "dev": "next dev",
+    "dev": "sh -c 'npm run dev:runner & npm run dev:web'",
     "build": "next build",
-    "start": "next start"
+    "start": "next start",
+    "dev:web": "next dev",
+    "dev:runner": "cd ../pipeline && ../.venv/bin/python runner.py"
   },
   "dependencies": {
     "@radix-ui/react-dialog": "^1.1.23",
