@@ -7,11 +7,13 @@ export const dynamic = "force-dynamic";
 
 export default async function Evidence() {
   const { data } = await supabase.from("evidence")
-    .select("id,claim,class,confidence,env_layer,quote_span,pillar,created_at,evidence_sources(documents(source_registry(publisher,tier)))")
+    .select("id,claim,class,confidence,env_layer,quote_span,pillar,created_at,evidence_sources(documents(url,title,published_on,source_registry(publisher,tier)))")
     .order("id");
   const rows = (data ?? []).map((e: any) => {
-    const src = e.evidence_sources?.[0]?.documents?.source_registry;
+    const doc = e.evidence_sources?.[0]?.documents;
+    const src = doc?.source_registry;
     return { ...e, publisher: src?.publisher, tier: src?.tier,
+      url: doc?.url ?? null, doc_title: doc?.title ?? null,
       date: e.created_at ? new Date(e.created_at).toLocaleDateString("en-GB", { day: "numeric", month: "short" }) : null };
   });
   return (

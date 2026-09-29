@@ -17,7 +17,7 @@ export default async function Pillar({ params, searchParams }: {
   const [topicsQ, evidenceQ, signalsQ, gateQ, srcQ, tsQ] = await Promise.all([
     supabase.from("topics").select("id,name").eq("pillar", pillar).order("id"),
     supabase.from("evidence")
-      .select("id,claim,class,confidence,env_layer,quote_span,topic_id,created_at,evidence_sources(documents(title,published_on,source_registry(publisher,tier)))")
+      .select("id,claim,class,confidence,env_layer,quote_span,topic_id,created_at,evidence_sources(documents(url,title,published_on,source_registry(publisher,tier)))")
       .eq("pillar", pillar).order("class").order("created_at", { ascending: false }).limit(40),
     supabase.from("signals").select("*").eq("pillar", pillar),
     supabase.from("validation_gates").select("*").ilike("id", `%${pillar.slice(0, 2)}%`),
@@ -37,6 +37,7 @@ export default async function Pillar({ params, searchParams }: {
   const allEv = (evidenceQ.data ?? []).map((e: any) => {
     const src = e.evidence_sources?.[0]?.documents;
     return { ...e, publisher: src?.source_registry?.publisher, tier: src?.source_registry?.tier,
+      url: src?.url ?? null, doc_title: src?.title ?? null,
       date: e.created_at ? new Date(e.created_at).toLocaleDateString("en-GB", { day: "numeric", month: "short" }) : null };
   });
   const counts: Record<string, number> = {};
