@@ -485,11 +485,12 @@ def main():
                 tally[row["option_id"]] += 1 if row["result"] == "ROBUST" else 0
         if tally:
             best = max(tally.items(), key=lambda kv: kv[1])
-            for oid in kept_opt.values():
-                sb.table("options").update(
-                    {"is_working_hypothesis": oid == best[0]}).eq("id", oid).execute()
-            print("  RULE working_hypothesis %s -> ROBUST in %d/%d scenario(s)"
-                  % (best[0], best[1], len(kept_scen)))
+            if best:
+                for oid in kept_opt.values():
+                    sb.table("options").update(
+                        {"is_working_hypothesis": oid == best[0]}).eq("id", oid).execute()
+                print("  RULE working_hypothesis %s -> survival %+d across %d scenario(s)"
+                      % (best[0], best[1], len(kept_scen)))
 
     # ---------------- initiatives and actions ----------------
     n = _next(sb, "initiatives", "INIT-")
