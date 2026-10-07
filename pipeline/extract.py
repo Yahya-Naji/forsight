@@ -7,6 +7,7 @@ import layers
 import llm
 import config
 from config import db
+from postgrest.exceptions import APIError
 from models import ExtractionResult, ENTITY_TYPES
 
 PROMPT = """You are the extraction agent of a strategic-foresight pipeline.
@@ -98,6 +99,26 @@ def _next_evidence_number(sb) -> int:
     return max(numbers) if numbers else 0
 
 
+def _insert_evidence(sb, n_ev: int, row: dict) -> "tuple[int, str]":
+    """Insert under the next free EV-nnn; returns (number, id).
+
+    Pillar jobs run in parallel (analyse.yml, the console's Run button), so
+    another job can take the number between our read and our insert. On a
+    duplicate key, re-read the highest number in use and try the next one.
+    """
+    for _ in range(8):
+        n_ev += 1
+        ev_id = f"EV-{n_ev:03d}"
+        try:
+            sb.table("evidence").insert({"id": ev_id, **row}).execute()
+            return n_ev, ev_id
+        except APIError as e:
+            if getattr(e, "code", None) != "23505":
+                raise
+            n_ev = _next_evidence_number(sb)
+    raise RuntimeError("could not claim a free evidence id after 8 attempts")
+
+
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--run-id", help="pipeline_runs row to report progress into")
@@ -179,14 +200,12 @@ def main():
             if changed:
                 print(f"  RULE env_layer UAE -> {layer} ({why})")
                 ev.env_layer = layer
-            n_ev += 1
-            ev_id = f"EV-{n_ev:03d}"
-            sb.table("evidence").insert({
-                "id": ev_id, "claim": ev.claim, "class": "C",          # provisional; rules.py upgrades
+            n_ev, ev_id = _insert_evidence(sb, n_ev, {
+                "claim": ev.claim, "class": "C",                         # provisional; rules.py upgrades
                 "confidence": "LOW",                                     # provisional; rules.py upgrades
                 "env_layer": ev.env_layer, "steep": ev.steep,
                 "pillar": ev.pillar, "topic_id": ev.topic_id,
-                "question_id": ev.question_id, "quote_span": ev.quote_span}).execute()
+                "question_id": ev.question_id, "quote_span": ev.quote_span})
             sb.table("evidence_sources").insert(
                 {"evidence_id": ev_id, "document_id": doc["id"]}).execute()
             print(f"  + {ev_id}: {ev.claim[:70]}")

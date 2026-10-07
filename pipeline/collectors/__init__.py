@@ -17,6 +17,7 @@ import httpx
 from bs4 import BeautifulSoup
 
 from .registry import DOMAIN_ALIASES, GDELT_REGISTRY_ID, as_dicts
+from postgrest.exceptions import APIError
 
 UA = "foresight-poc/0.2 (strategic-foresight research collector)"
 HEADERS = {"User-Agent": UA, "Accept-Language": "en"}
@@ -244,7 +245,13 @@ def store(sb, registry_id: str, url: str, title: str, text: str,
         log("  [dry-run] %-13s %s" % (registry_id, (title or url)[:62]))
         return True
 
-    sb.table("documents").upsert(row, on_conflict="url").execute()
+    try:
+        sb.table("documents").upsert(row, on_conflict="url").execute()
+    except APIError as e:
+        # Supabase's Cloudflare WAF answers some document text with a 403
+        # page; one refused document must not end the whole lane.
+        warn("database refused (%s), skipped: %s" % (getattr(e, "code", "?"), url[:70]))
+        return False
     log("  stored [%s] %s" % (registry_id, (title or url)[:62]))
     return True
 
