@@ -6,7 +6,7 @@ PILLAR  ?= CYBERSECURITY
 TITLE   ?= $(PILLAR) baseline
 REPORT  ?=
 
-.PHONY: help setup migrate collect extract gate3 rules synth forecast generate verify report pdf evaluate web build clean
+.PHONY: help setup migrate collect extract gate3 rules synth forecast generate verify report pdf evaluate web build clean prompts prompts-check dump restore refile refile-apply seed-ew
 
 help:               ## list the available targets
 	@grep -E '^[a-z0-9-]+:.*?## ' $(MAKEFILE_LIST) | sed 's/:.*## /\t/' | expand -t22
@@ -57,6 +57,27 @@ BENCHMARK ?= docs/source/counter-uas-report-v1.0.docx
 evaluate:           ## score against a benchmark: make evaluate BENCHMARK=path.pdf
 	$(PY) pipeline/evaluate.py --pillar $(PILLAR) --benchmark "$(BENCHMARK)" \
 	  --json out/scorecard.json
+
+prompts:            ## write every agent's prompt to agents/prompts/
+	$(PY) pipeline/export_prompts.py
+
+prompts-check:      ## fail if agents/prompts/ is stale against the code
+	$(PY) pipeline/export_prompts.py --check
+
+seed-ew:            ## ingest the EW document seed (docs/ew-document-seed.txt) — documents only
+	$(PY) pipeline/collect.py --lane a $$(grep -E '^https?://' docs/ew-document-seed.txt | awk '{print "--url " $$1}')
+
+refile:             ## propose EW-core topic placements -> out/refile/*.csv (changes nothing)
+	$(PY) pipeline/refile.py
+
+refile-apply:       ## apply a reviewed proposal: make refile-apply FILE=out/refile/<x>.csv
+	$(PY) pipeline/refile.py --apply $(FILE)
+
+dump:               ## snapshot Postgres into db/dumps/<stamp>/ (needs Docker)
+	./db/dump.sh
+
+restore:            ## restore a snapshot: make restore DB=<postgres-url> [DUMP=db/dumps/<stamp>]
+	./db/restore.sh "$(DB)" $(DUMP)
 
 web:                ## run the console locally
 	cd web && npm run dev

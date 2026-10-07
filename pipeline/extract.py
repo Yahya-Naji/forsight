@@ -19,12 +19,28 @@ Rules (violations are rejected by a validator, so follow exactly):
   "Middle East", "Gulf" or "the region" are REGIONAL, never UAE. A regional
   observation is not a UAE observation.
   steep (subset of Social/Technological/Economic/Environmental/Political),
-  pillar (must be {pillar}), topic_id (one of: {topics}),
-  quote_span (VERBATIM words copied from the document, 10-400 chars).
+  pillar (must be {pillar}), topic_id (one of the topics below),
+  quote_span (VERBATIM words copied from the document, 10-400 chars),
+  ew_hook (VERBATIM words from inside quote_span that tie the claim to the
+  topic's EW functions: a jammer, a drone, a radar, GNSS, a waveform, the
+  spectrum, a counter-UAS system... A country, company, "AI", "cyber" or
+  "defence" on its own is not a hook).
+- Electronic Warfare is the core of this system. Every topic below exists for
+  its effect on EW. Extract a claim ONLY if it bears on a topic's EW functions
+  and you can give its ew_hook. Generic IT security, general AI news, budgets
+  and politics with no EW content are not extracted, however interesting.
+{lens_rule}
 - Do NOT assign confidence or evidence class - that is not your job.
 - Only extract claims the quote_span actually supports. No speculation, no synthesis.
+- Extract EVERY distinct claim that passes the EW test — figures, dates,
+  capabilities, programmes, observed effects, stated plans. A substantive report
+  section usually yields 5-15; a short news item 2-5. One claim per document is
+  almost always too few.
 - entities: entity_type must be one of {entity_types}; name + attrs from the text only.
 - If the document contains nothing relevant, return {{"evidence": [], "entities": []}}.
+
+Topics (id [EW functions] name — EW impact):
+{topics}
 
 Document title: {title}
 Document text:
@@ -32,6 +48,40 @@ Document text:
 """
 
 EV_PATTERN = re.compile(r"^EV-(\d+)$")
+CHUNK = 30000
+
+# A lens run sees only its own topics, so without this it files general EW
+# claims (a new drone's range) under whichever lens topic is nearest.
+_LENS = ("- This run extracts the {angle} angle on EW ONLY: the claim itself must be "
+         "about {what}. A claim about EW, drones or air defence in general, with no "
+         "{angle} element, is NOT extracted here — the Electronic Warfare run takes it.")
+LENS_RULE = {
+    "CYBERSECURITY": _LENS.format(angle="cyber", what="cyber intrusion, protocols, "
+                                  "software, firmware, data integrity or supply-chain integrity"),
+    "AI": _LENS.format(angle="AI", what="machine learning, autonomy, AI classification "
+                       "or decision support, or the assurance of AI"),
+    "PROCUREMENT": _LENS.format(angle="acquisition", what="contracts, programmes, "
+                                "budgets for EW or counter-UAS, rights, export controls, "
+                                "sovereignty, industry or testing for acceptance"),
+}
+
+
+def _norm(text: str) -> str:
+    text = (text or "").lower()
+    for a, b in (("\u2019", "'"), ("\u2018", "'"), ("\u201c", '"'), ("\u201d", '"'),
+                 ("\u2013", "-"), ("\u2014", "-"), ("\u00a0", " ")):
+        text = text.replace(a, b)
+    return " ".join(text.split()).strip(" .,;:'\"")
+
+
+def _letters(text: str) -> str:
+    # Letters and digits only: PDF text breaks words across lines ("elec- tronic",
+    # "counter- UAS"), which defeats an exact match on a quote that is verbatim.
+    return re.sub(r"[^a-z0-9]", "", _norm(text))
+
+
+def _within(part: str, whole: str) -> bool:
+    return len(_letters(part)) >= 3 and _letters(part) in _letters(whole)
 PILLAR_CODE = {"CYBERSECURITY": "CS", "AI": "AI",
                "ELECTRONIC_WARFARE": "EW", "PROCUREMENT": "PR"}
 
@@ -57,17 +107,29 @@ def main():
     config.update_run(getattr(a, "run_id", None), stage="extract", status="RUNNING")
     sb = db()
 
-    topics = [t["id"] for t in sb.table("topics").select("id").eq("pillar", a.pillar).execute().data]
+    topic_rows = (sb.table("topics").select("id,name,description,ew_functions,ew_impact")
+                  .eq("pillar", a.pillar).is_("retired_at", "null").order("id").execute().data)
+    topics = [t["id"] for t in topic_rows]
+    # Names and EW links, not bare ids: given only "AI-T05" the model filed
+    # drone-range claims under the UAE AI ecosystem.
+    topic_text = "\n".join(
+        "%s [%s] %s — %s" % (t["id"], ", ".join(t["ew_functions"]), t["name"],
+                             t.get("ew_impact") or t.get("description") or "")
+        for t in topic_rows)
 
     # Only documents from registry rows that cover this pillar. Without this the
     # extractor reads whatever was collected most recently, regardless of pillar.
     registry_ids = [r["id"] for r in sb.table("source_registry").select("id")
-                    .contains("pillars", [a.pillar]).execute().data]
+                    .contains("pillars", [a.pillar]).is_("archived_at", "null")
+                    .execute().data]
     if not registry_ids:
         print("no registry sources for pillar %s" % a.pillar)
         return
-    docs = (sb.table("documents").select("id,title,raw_text,registry_id")
+    # Unread for this pillar only: extracted_pillars records every pillar that
+    # has read a document, so a re-run moves on instead of duplicating evidence.
+    docs = (sb.table("documents").select("id,title,raw_text,registry_id,extracted_pillars")
               .in_("registry_id", registry_ids)
+              .not_.contains("extracted_pillars", [a.pillar])
               .order("retrieved_at", desc=True).limit(a.limit).execute().data)
     print("extracting from %d %s document(s)" % (len(docs), a.pillar))
 
@@ -75,23 +137,42 @@ def main():
     n_ent = (sb.table("entities").select("id", count="exact", head=True)
              .like("id", f"{PILLAR_CODE[a.pillar]}-EXT-%").execute().count or 0)
     for doc in docs:
-        prompt = PROMPT.format(
-            pillar=a.pillar, topics=topics,
-            entity_types=ENTITY_TYPES[a.pillar],
-            title=doc["title"], text=(doc["raw_text"] or "")[:30000])
-        try:
-            # Extraction is mechanical, not analytical — cheap deployment, low effort.
-            result = llm.structured(prompt, ExtractionResult, fast=True, effort="low")
-        except Exception as exc:
-            print(f"REJECTED {doc['title'][:50]}: {type(exc).__name__}: {exc}")
-            sb.table("research_gaps").insert({
-                "pillar": a.pillar,
-                "gap": f"Extraction failed for {doc['title'][:160]}: {exc}"[:500],
-                "raised_by": "extract.schema"}).execute()
+        raw = doc["raw_text"] or ""
+        result = ExtractionResult()
+        failed = False
+        # Long reports are read in chunks rather than cut at the first 30k chars.
+        for start in range(0, max(len(raw), 1), CHUNK):
+            prompt = PROMPT.format(
+                pillar=a.pillar, topics=topic_text, lens_rule=LENS_RULE.get(a.pillar, ""),
+                entity_types=ENTITY_TYPES[a.pillar],
+                title=doc["title"], text=raw[start:start + CHUNK])
+            try:
+                # Cheap deployment, but medium effort: at low effort it returned one
+                # claim per document and paraphrased the EW hook it had to copy.
+                part = llm.structured(prompt, ExtractionResult, fast=True, effort="medium")
+            except Exception as exc:
+                print(f"REJECTED {doc['title'][:50]}: {type(exc).__name__}: {exc}")
+                sb.table("research_gaps").insert({
+                    "pillar": a.pillar,
+                    "gap": f"Extraction failed for {doc['title'][:160]}: {exc}"[:500],
+                    "raised_by": "extract.schema"}).execute()
+                failed = True
+                break
+            result.evidence += part.evidence
+            result.entities += part.entities
+        if failed:
             continue
         for ev in result.evidence:
             if ev.pillar != a.pillar or ev.topic_id not in topics:
                 print(f"  rejected claim (pillar/topic rule): {ev.claim[:60]}")
+                continue
+            # The quote must really be in the document, and the EW hook really in
+            # the quote. A claim that cannot point at its EW words is a stretch.
+            if not _within(ev.quote_span, raw):
+                print(f"  rejected claim (quote not in document): {ev.claim[:60]}")
+                continue
+            if not _within(ev.ew_hook, ev.quote_span):
+                print(f"  rejected claim (no EW hook in quote, hook={ev.ew_hook[:30]!r}): {ev.claim[:50]}")
                 continue
             # Deterministic layer check — the prompt asks, the rule enforces.
             layer, changed, why = layers.resolve_env_layer(ev.quote_span, ev.env_layer)
@@ -121,6 +202,12 @@ def main():
                 "pillar": ent.pillar, "entity_type": ent.entity_type,
                 "name": ent.name[:300], "attrs": ent.attrs_dict()}).execute()
             print(f"  ~ {ent.entity_type}: {ent.name[:60]}")
+
+        # Marked read only once its evidence is stored, so a crash mid-document
+        # leaves it unread and the next run picks it up again.
+        sb.table("documents").update(
+            {"extracted_pillars": sorted(set((doc.get("extracted_pillars") or []) + [a.pillar]))}
+        ).eq("id", doc["id"]).execute()
 
     config.update_run(getattr(a, "run_id", None),
                       counts={"extract": _next_evidence_number(sb)})

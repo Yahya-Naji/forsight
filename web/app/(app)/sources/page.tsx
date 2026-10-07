@@ -24,13 +24,17 @@ export default async function Sources() {
     topicsByReg.set(t.registry_id, [...(topicsByReg.get(t.registry_id) ?? []), t.topic_id]);
   }
 
-  const rows = reg.map(r => ({
+  const all = reg.map(r => ({
     ...r,
     docs: byReg.get(r.id)?.n ?? 0,
     last: byReg.get(r.id)?.last ?? null,
     topics: topicsByReg.get(r.id) ?? [],
   }));
 
+  // Archived (026): kept so collected documents keep their publisher and tier,
+  // but no longer collected because they carry no EW coverage.
+  const rows = all.filter(r => !r.archived_at);
+  const archived = all.filter(r => r.archived_at);
   const silent = rows.filter(r => r.docs === 0).length;
   const tiers = [1, 2, 3, 4].map(t => ({ t, n: rows.filter(r => r.tier === t).length }));
 
@@ -53,6 +57,26 @@ export default async function Sources() {
       </div>
 
       <SourceTable rows={rows as any} />
+
+      {archived.length > 0 && (
+        <details className="card" style={{ marginTop: 20, padding: "14px 18px" }}>
+          <summary style={{ cursor: "pointer", fontSize: 13, fontWeight: 600 }}>
+            {archived.length} archived sources · no longer collected
+          </summary>
+          <p style={{ fontSize: 12, color: "var(--muted)", lineHeight: 1.55, margin: "8px 0 10px" }}>
+            Electronic Warfare is the core pillar, so sources with no EW coverage are no longer
+            read. Documents already collected from them keep their publisher and tier.
+          </p>
+          {archived.map(r => (
+            <div key={r.id} className="row" style={{ gap: 10, padding: "7px 0", borderTop: "1px solid var(--line)", fontSize: 12.5 }}>
+              <span style={{ fontWeight: 600, minWidth: 220 }}>{r.publisher}</span>
+              <span className={`chip ${r.tier === 1 ? "chip-tier1" : "chip-tier"}`}>T{r.tier}</span>
+              <span style={{ color: "var(--muted)", flex: 1 }}>{r.archived_reason}</span>
+              <span style={{ color: "var(--faint)" }}>{r.docs} docs</span>
+            </div>
+          ))}
+        </details>
+      )}
     </div>
   );
 }

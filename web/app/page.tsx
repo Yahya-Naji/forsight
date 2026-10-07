@@ -12,6 +12,7 @@ async function chain() {
   const { data: ev } = await supabase
     .from("evidence")
     .select("id,claim,quote_span,class,env_layer")
+    .is("archived_at", null)
     .in("class", ["A", "B"]).not("quote_span", "is", null)
     .order("id").limit(1);
   const e = ev?.[0];
@@ -35,7 +36,7 @@ export default async function Landing() {
       const [d, s, g] = await Promise.all([
         supabase.from("documents").select("id", { count: "exact", head: true }),
         supabase.from("source_registry").select("id", { count: "exact", head: true }),
-        supabase.from("evidence").select("id", { count: "exact", head: true }),
+        supabase.from("evidence").select("id", { count: "exact", head: true }).is("archived_at", null),
       ]);
       return { docs: d.count ?? 0, sources: s.count ?? 0, evidence: g.count ?? 0 };
     })(),

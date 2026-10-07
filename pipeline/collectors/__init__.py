@@ -266,7 +266,7 @@ def load_registry(sb, dry_run: bool = False) -> List[dict]:
         return as_dicts()
     try:
         rows = sb.table("source_registry").select(
-            "id,tier,publisher,url,method,pillars,notes").execute().data
+            "id,tier,publisher,url,method,pillars,notes,archived_at").execute().data
         return rows or as_dicts()
     except Exception as exc:
         warn("registry read failed (%s) — using static copy" % exc)

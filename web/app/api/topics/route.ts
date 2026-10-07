@@ -18,12 +18,25 @@ export async function POST(req: Request) {
   const body = await req.json() as {
     pillar: string; name: string; description?: string;
     uae_relevance?: string; sources?: string[];
+    ew_functions?: string[]; ew_impact?: string;
   };
 
   const pillar = (body.pillar ?? "").toUpperCase();
   const name = (body.name ?? "").trim();
   if (!PILLARS.includes(pillar)) return NextResponse.json({ error: "Unknown pillar." }, { status: 400 });
   if (name.length < 4) return NextResponse.json({ error: "Give the topic a name." }, { status: 400 });
+
+  // Electronic Warfare is the core pillar: every topic names the EW functions it
+  // touches, and outside EW says how. The database enforces this too (025);
+  // checking here turns a constraint error into a sentence.
+  const ewFunctions = (body.ew_functions ?? []).filter(Boolean);
+  const ewImpact = body.ew_impact?.trim() || null;
+  if (!ewFunctions.length) {
+    return NextResponse.json({ error: "Pick at least one EW function this topic affects." }, { status: 400 });
+  }
+  if (pillar !== "ELECTRONIC_WARFARE" && !ewImpact) {
+    return NextResponse.json({ error: "Say in one sentence what this topic does to electronic warfare." }, { status: 400 });
+  }
 
   // Ids follow the seeded scheme (CS-T07) so console-created topics are
   // indistinguishable from the ones the migration laid down.
@@ -38,6 +51,7 @@ export async function POST(req: Request) {
     id, pillar, name,
     description: body.description?.trim() || null,
     uae_relevance: body.uae_relevance?.trim() || null,
+    ew_functions: ewFunctions, ew_impact: ewImpact,
   });
   if (error) return NextResponse.json({ error: error.message }, { status: 400 });
 

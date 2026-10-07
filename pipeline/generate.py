@@ -506,6 +506,8 @@ def fetch_inputs(sb, pillar, wanted, section_key, brief=None):
 
     def rows_for(table, cols):
         q = sb.table(table).select(cols)
+        if table == "evidence":             # archived rows are out of scope
+            q = q.is_("archived_at", "null")
         return (q.in_("pillar", pillars) if len(pillars) > 1
                 else q.eq("pillar", pillars[0])).execute().data
 

@@ -2,19 +2,22 @@
 import { useState } from "react";
 
 type Source = { id: string; publisher: string; tier: number; method: string; pillars: string[] };
+type EwFunction = { id: string; division: string; name: string };
 type Step = "topic" | "sources" | "done";
 
 // Two steps on purpose: a topic with no sources collects nothing, so the source
 // binding is part of creating it rather than a setting somebody may forget.
 
-export default function AddTopic({ pillar, pillarLabel, sources }: {
-  pillar: string; pillarLabel: string; sources: Source[];
+export default function AddTopic({ pillar, pillarLabel, sources, ewFunctions }: {
+  pillar: string; pillarLabel: string; sources: Source[]; ewFunctions: EwFunction[];
 }) {
   const [open, setOpen] = useState(false);
   const [step, setStep] = useState<Step>("topic");
   const [name, setName] = useState("");
   const [desc, setDesc] = useState("");
   const [rel, setRel] = useState("");
+  const [fns, setFns] = useState<string[]>([]);
+  const [impact, setImpact] = useState("");
   const [picked, setPicked] = useState<string[]>([]);
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState<string | null>(null);
@@ -23,11 +26,13 @@ export default function AddTopic({ pillar, pillarLabel, sources }: {
 
   // Sources already scoped to this pillar first — the rest stay available but
   // are unlikely to be what an analyst wants.
+  const isEw = pillar === "ELECTRONIC_WARFARE";
+  const ready = name.trim().length >= 4 && fns.length > 0 && (isEw || impact.trim().length > 0);
   const mine = sources.filter(s => s.pillars?.includes(pillar));
   const others = sources.filter(s => !s.pillars?.includes(pillar));
 
   function reset() {
-    setOpen(false); setStep("topic"); setName(""); setDesc(""); setRel("");
+    setOpen(false); setStep("topic"); setName(""); setDesc(""); setRel(""); setFns([]); setImpact("");
     setPicked([]); setErr(null); setMade(null); setTests({});
   }
 
@@ -45,7 +50,8 @@ export default function AddTopic({ pillar, pillarLabel, sources }: {
     try {
       const r = await fetch("/api/topics", {
         method: "POST", headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ pillar, name, description: desc, uae_relevance: rel, sources: picked }),
+        body: JSON.stringify({ pillar, name, description: desc, uae_relevance: rel, sources: picked,
+                               ew_functions: fns, ew_impact: impact }),
       });
       const d = await r.json();
       if (!r.ok) { setErr(d.error ?? "Could not create the topic."); return; }
@@ -93,11 +99,35 @@ export default function AddTopic({ pillar, pillarLabel, sources }: {
             <Field label="UAE relevance" hint="Why this matters for the UAE specifically — used to judge whether global evidence transfers.">
               <textarea value={rel} onChange={e => setRel(e.target.value)} rows={2} style={{ ...inp, resize: "vertical" }} />
             </Field>
+            <Field label="EW functions it affects" required
+                   hint="Electronic Warfare is the core pillar. A topic that touches none of these is out of scope.">
+              <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
+                {ewFunctions.map(f => {
+                  const on = fns.includes(f.id);
+                  return (
+                    <button key={f.id} type="button" title={f.id}
+                            onClick={() => setFns(p => on ? p.filter(x => x !== f.id) : [...p, f.id])}
+                            style={{ fontSize: 11.5, borderRadius: 999, padding: "5px 10px", cursor: "pointer",
+                                     border: `1px solid ${on ? "var(--accent)" : "var(--line)"}`,
+                                     background: on ? "var(--accent-wash)" : "var(--card)",
+                                     color: on ? "var(--accent-deep)" : "var(--ink-2)" }}>
+                      <span style={{ color: "var(--faint)", marginRight: 5 }}>{f.division}</span>{f.name}
+                    </button>
+                  );
+                })}
+              </div>
+            </Field>
+            {!isEw && (
+              <Field label="Impact on electronic warfare" required
+                     hint="One sentence: what this does to the EW fight.">
+                <textarea value={impact} onChange={e => setImpact(e.target.value)} rows={2} style={{ ...inp, resize: "vertical" }} />
+              </Field>
+            )}
             <div className="row" style={{ justifyContent: "flex-end", gap: 10, marginTop: 8 }}>
               <button onClick={reset} style={ghost}>Cancel</button>
-              <button className="pill-btn" disabled={name.trim().length < 4}
+              <button className="pill-btn" disabled={!ready}
                       onClick={() => setStep("sources")}
-                      style={{ opacity: name.trim().length < 4 ? .5 : 1 }}>
+                      style={{ opacity: ready ? 1 : .5 }}>
                 Choose sources →
               </button>
             </div>

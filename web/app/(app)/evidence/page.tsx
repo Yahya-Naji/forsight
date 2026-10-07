@@ -8,6 +8,7 @@ export const dynamic = "force-dynamic";
 export default async function Evidence() {
   const { data } = await supabase.from("evidence")
     .select("id,claim,class,confidence,env_layer,quote_span,pillar,created_at,evidence_sources(documents(url,title,published_on,source_registry(publisher,tier)))")
+    .is("archived_at", null)
     .order("id");
   const rows = (data ?? []).map((e: any) => {
     const doc = e.evidence_sources?.[0]?.documents;

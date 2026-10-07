@@ -12,7 +12,7 @@ export async function POST(req: Request) {
   const stop = new Set(["the", "and", "for", "what", "which", "who", "are", "does", "how", "with", "that", "this", "about", "target", "targets"]);
   const keys = terms.filter(t => !stop.has(t)).slice(0, 6);
 
-  let q = sb.from("evidence").select("id,claim,class,confidence,env_layer,quote_span").limit(6);
+  let q = sb.from("evidence").select("id,claim,class,confidence,env_layer,quote_span").is("archived_at", null).limit(6);
   if (keys.length) q = q.or(keys.map(k => `claim.ilike.%${k}%`).join(","));
   const [evQ, gatesQ] = await Promise.all([q, sb.from("validation_gates").select("id,blocks").eq("status", "OPEN")]);
   const evidence = evQ.data ?? [];

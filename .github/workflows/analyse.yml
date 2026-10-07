@@ -3,6 +3,8 @@ name: analyse
 # Collection runs daily but nothing downstream did, which is why three of four
 # pillars held zero evidence. This turns the stored documents into analysis:
 # extract → merge → rules → synthesize → forecast, one job per pillar.
+# extract.py reads only documents this pillar has not read yet, keeps a claim
+# only with a verbatim EW hook, and skips archived sources.
 #
 # Pillars are independent, so fail-fast is off: a model timeout on Procurement
 # must not discard a completed Electronic Warfare run.
@@ -97,7 +99,10 @@ jobs:
           import sys; sys.path.insert(0,'.')
           from config import db
           sb, p = db(), "${{ matrix.pillar }}"
-          rows = {t: len(sb.table(t).select("id").eq("pillar", p).execute().data)
+          def live(t):
+              q = sb.table(t).select("id").eq("pillar", p)
+              return q.is_("archived_at", "null") if t == "evidence" else q
+          rows = {t: len(live(t).execute().data)
                   for t in ("evidence","signals","findings","risks","forecasts")}
           print(f"### {p}\n")
           print("| " + " | ".join(rows) + " |")

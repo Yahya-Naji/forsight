@@ -114,14 +114,39 @@ def collect_scrape(sb, row, limit, dry_run=False):
     return 1 if store(sb, row["id"], row["url"], title, text, dry_run=dry_run) else 0
 
 
-def run(sb, pillar, limit=5, dry_run=False):
+def bound_sources(sb, pillar=None, topic=None) -> set:
+    """Registry ids bound (topic_sources) to live topics — of one topic, of one
+    pillar's topics, or of every live topic."""
+    q = sb.table("topics").select("id").is_("retired_at", "null")
+    if topic:
+        q = q.eq("id", topic)
+    elif pillar:
+        q = q.eq("pillar", pillar)
+    topic_ids = [t["id"] for t in q.execute().data]
+    if not topic_ids:
+        return set()
+    return {r["registry_id"] for r in sb.table("topic_sources").select("registry_id")
+            .in_("topic_id", topic_ids).execute().data}
+
+
+def run(sb, pillar=None, limit=5, dry_run=False, bound=False, topic=None):
+    """Sweep the feeds of a pillar, or — with bound/topic — only the feeds bound
+    to live topics, so a scheduled run reads what the topics actually need."""
     rows = [r for r in load_registry(sb, dry_run)
-            if r["method"] in ("rss", "scrape") and pillar in (r.get("pillars") or [])]
+            if r["method"] in ("rss", "scrape") and not r.get("archived_at")
+            and (pillar is None or pillar in (r.get("pillars") or []))]
+    scope = pillar or "all pillars"
+    if (bound or topic) and sb is not None:
+        wanted = bound_sources(sb, pillar, topic)
+        rows = [r for r in rows if r["id"] in wanted]
+        scope = topic or ("%s topics" % (pillar or "all live"))
+    elif bound or topic:
+        warn("dry run has no topic bindings — sweeping by pillar instead")
     if not rows:
-        warn("no Lane A sources registered for pillar %s" % pillar)
+        warn("no Lane A sources for %s" % scope)
         return 0
 
-    log("LANE A · %s · %d scheduled sources" % (pillar, len(rows)))
+    log("LANE A · %s · %d scheduled sources" % (scope, len(rows)))
     total = 0
     for row in sorted(rows, key=lambda r: r["tier"]):
         log("[Tier %d] %s (%s)" % (row["tier"], row["publisher"], row["method"]))

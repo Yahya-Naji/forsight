@@ -14,15 +14,16 @@ export default async function Pillar({ params, searchParams }: {
   const pillar = params.pillar.toUpperCase();
   const name = PILLAR_LABEL[pillar] ?? pillar;
 
-  const [topicsQ, evidenceQ, signalsQ, gateQ, srcQ, tsQ] = await Promise.all([
-    supabase.from("topics").select("id,name").eq("pillar", pillar).order("id"),
+  const [topicsQ, evidenceQ, signalsQ, gateQ, srcQ, tsQ, fnQ] = await Promise.all([
+    supabase.from("topics").select("id,name,ew_impact").eq("pillar", pillar).is("retired_at", null).order("id"),
     supabase.from("evidence")
       .select("id,claim,class,confidence,env_layer,quote_span,topic_id,created_at,evidence_sources(documents(url,title,published_on,source_registry(publisher,tier)))")
-      .eq("pillar", pillar).order("class").order("created_at", { ascending: false }).limit(40),
+      .eq("pillar", pillar).is("archived_at", null).order("class").order("created_at", { ascending: false }).limit(40),
     supabase.from("signals").select("*").eq("pillar", pillar),
     supabase.from("validation_gates").select("*").ilike("id", `%${pillar.slice(0, 2)}%`),
-    supabase.from("source_registry").select("id,publisher,tier,method,pillars").order("tier").order("id"),
+    supabase.from("source_registry").select("id,publisher,tier,method,pillars").is("archived_at", null).order("tier").order("id"),
     supabase.from("topic_sources").select("topic_id,registry_id"),
+    supabase.from("ew_functions").select("id,division,name").order("division").order("id"),
   ]);
 
   const topics = topicsQ.data ?? [];
@@ -72,7 +73,8 @@ export default async function Pillar({ params, searchParams }: {
         <div>
           <div className="row" style={{ justifyContent: "space-between", paddingBottom: 10 }}>
             <span className="kicker">Topics</span>
-            <AddTopic pillar={pillar} pillarLabel={name} sources={allSources as any} />
+            <AddTopic pillar={pillar} pillarLabel={name} sources={allSources as any}
+                      ewFunctions={fnQ.data ?? []} />
           </div>
           {topics.map(t => {
             const on = t.id === active;
@@ -85,6 +87,11 @@ export default async function Pillar({ params, searchParams }: {
                   <span className="display" style={{ fontSize: 15, fontWeight: on ? 600 : 500, color: on ? "var(--ink)" : "#A6ACC4" }}>{t.name}</span>
                   <span style={{ fontSize: 11, fontWeight: 700, color: on ? "var(--accent)" : "#A6ACC4" }}>{counts[t.id] ?? 0}</span>
                 </div>
+                {on && t.ew_impact && (
+                  <div style={{ fontSize: 12, color: "var(--ink-2)", lineHeight: 1.5, marginTop: 5 }}>
+                    <b style={{ color: "var(--accent-deep)" }}>EW impact · </b>{t.ew_impact}
+                  </div>
+                )}
                 {/* Unbound is not silent: Lane A still sweeps at pillar level. It
                     means collection is not aimed at this topic specifically. */}
                 <div style={{ fontSize: 11, color: feeds.length ? "var(--faint)" : "var(--amber-ink)", marginTop: 4 }}>

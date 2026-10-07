@@ -266,7 +266,8 @@ def main():
 
     # Documents that produced evidence for this pillar are the ones whose
     # figures a report on this pillar could legitimately cite.
-    ev = sb.table("evidence").select("id").eq("pillar", a.pillar).execute().data
+    ev = (sb.table("evidence").select("id").eq("pillar", a.pillar)
+          .is_("archived_at", "null").execute().data)
     ev_ids = [r["id"] for r in ev]
     doc_ids = set()
     for i in range(0, len(ev_ids), 50):

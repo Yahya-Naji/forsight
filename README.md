@@ -1,7 +1,9 @@
 # Neurosymbolic Foresight Agent
 
-Strategic-foresight system for the Tawazun Council across four pillars —
-Cybersecurity, AI, Electronic Warfare, Procurement.
+Strategic-foresight system for the Tawazun Council. **Electronic Warfare is the
+core pillar**; Cybersecurity, AI and Procurement are lenses on it — every one of
+their topics names the EW function it affects and says how, and the database
+refuses a topic that cannot (migration 025).
 
 Not prompt-based generation. Every fact is a typed, sourced row in Postgres;
 rules assign class, confidence and signal strength; the model only extracts and
@@ -11,7 +13,7 @@ withheld rather than published.
 ```
                     ┌─ LANE A  scheduled feeds (rss + scrape), daily cron
 source_registry ────┼─ LANE B  question-driven search (GDELT + site search)
-  27 tiered rows    └─ LANE C  structured APIs (ATT&CK, NVD) ──┐
+  tiered rows       └─ LANE C  structured APIs (NVD) ──────────┐
                                                                │
           Lanes A+B → documents → extract.py (LLM + Pydantic) ─┤
                                                                ▼
@@ -54,7 +56,7 @@ measurable* rather than estimated: its sources are not in our graph.
 ```bash
 make setup                  # venv + python deps + npm install
 cp .env.example .env        # fill in Supabase + Azure OpenAI
-make migrate                # apply migrations 001 → 010
+make migrate                # apply migrations 001 → 028
 make report PILLAR=CYBERSECURITY
 make verify REPORT=<uuid>
 make pdf    REPORT=<uuid>   # → out/report.pdf
@@ -82,7 +84,7 @@ pipeline/            the whole pipeline; every script runs from the repo root
   llm.py             the only place the pipeline talks to a model
   labels.py          enum → reader-facing label      layers.py  UAE layer rules
 web/                 Next.js console (no Tailwind, no UI libraries)
-supabase/migrations/ 001 → 010, applied in order
+supabase/migrations/ 001 → 028, applied in order
 design/mockups/      UI reference    design/templates/  report render template
 docs/source/         client inputs   docs/design-history/  superseded explorations
 out/                 generated reports and PDFs (gitignored)
@@ -135,6 +137,23 @@ the full chain and reports each stage into `pipeline_runs`, so `/generate`
 reflects what actually ran. Without `GH_TOKEN`/`GH_REPO` a requested run stays
 `QUEUED` — the system never reports progress that did not happen.
 
+## Electronic Warfare as the core
+
+`ew_functions` is the EW map, taken from the two client manuals in
+`docs/source/` (EA / EP / ES, spectrum operations, cyber-EW convergence, and the
+counter-UAS chain). Each of the 24 live topics points at one or more of them.
+
+- **Topics** outside EW carry an `ew_impact` sentence; old topics are retired,
+  not deleted.
+- **Evidence** is extracted only with an `ew_hook` — words copied from the quote
+  that tie the claim to EW — and the code checks both the quote (in the
+  document) and the hook (in the quote).
+- **Out-of-scope rows** are archived (`evidence.archived_at`,
+  `source_registry.archived_at`), never deleted: every read skips them, and
+  clearing the column revives them. `make refile` / `make refile-apply` moved
+  the pre-025 evidence; `make seed-ew` ingests the Tier 1–2 EW document list
+  in `docs/ew-document-seed.txt`.
+
 ## Known limits
 
 - Citation faithfulness sits around 0.55 on `gpt-4o`; it over-attributes. A
@@ -142,7 +161,12 @@ reflects what actually ran. Without `GH_TOKEN`/`GH_REPO` a requested run stays
 - Report sections log `UNSCOPED` — no rows are linked to sections yet, so each
   section receives the whole pillar. The ledger records this rather than
   claiming otherwise.
-- `extract.py` assigns `topic_id` round-robin rather than semantically.
+- Site-scoped search (`method='search'` rows: RUSI, CSIS, GAO, CRS, NATO…)
+  needs `SERPER_API_KEY`; without it those sources are reached only through
+  `docs/ew-document-seed.txt`. GAO, ICAO, RAND and media.defense.gov also need
+  the stealth fetch (`CAMOFOX_URL`).
+- Documents are stored up to 60,000 characters, so long reports are partial.
+- Jev Gate 3 (`decisions.py`) still reads archived evidence.
 - Jev Gates 1 and 2 (relevance triage, quote entailment) are not implemented.
 - `/api/ask` still calls Anthropic while the pipeline runs on Azure OpenAI; the
   deterministic path is unaffected.

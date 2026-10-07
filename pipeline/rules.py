@@ -161,7 +161,7 @@ def uae_inference_guard(sb, tiers=None):
     tiers = tiers or _registry_tiers(sb)
     for pillar in ["CYBERSECURITY", "AI", "ELECTRONIC_WARFARE", "PROCUREMENT"]:
         uae = (sb.table("evidence").select("id").eq("pillar", pillar)
-               .eq("env_layer", "UAE").in_("class", ["A", "B"]).execute().data)
+               .is_("archived_at", "null").eq("env_layer", "UAE").in_("class", ["A", "B"]).execute().data)
         ids = [r["id"] for r in uae]
         _, pubs, _ = provenance(sb, ids, tiers)
         satisfied = len(ids) >= UAE_GATE_MIN_ROWS and len(pubs) >= UAE_GATE_MIN_PUBS

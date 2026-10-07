@@ -1,13 +1,15 @@
 name: collect
 
-# Lane A runs daily across all four pillars; Lane C reloads the structured
-# datasets weekly (ATT&CK and NVD change slowly and ATT&CK is a ~54 MB pull).
-# Lane B is deliberately NOT scheduled — it is question-driven and is triggered
-# by hand or by the Strategic Watch loop.
+# Collection is aimed by topic (025-027): Electronic Warfare is the core pillar,
+# and each live topic is bound to the sources expected to carry it. Lane A
+# reads only those feeds, daily. Lane B walks the questions of live topics, and
+# searches by topic name where a topic has no question yet. Weekly, NVD reloads
+# EW-relevant CVEs and the Tier 1-2 EW document seed is re-ingested (stored
+# URLs are skipped, so only new or previously failed documents land).
 on:
   schedule:
     - cron: "17 3 * * *"      # daily 03:17 UTC — Lane A
-    - cron: "42 4 * * 0"      # Sundays 04:42 UTC — Lane C
+    - cron: "42 4 * * 0"      # Sundays 04:42 UTC — Lane C (NVD) + EW document seed
     - cron: "10 2 * * 2"      # Tuesdays 02:10 UTC — Lane B over the question bank
   workflow_dispatch:
     inputs:
@@ -18,19 +20,23 @@ on:
         type: choice
         options: ["a", "b", "c"]
       pillar:
-        description: "Lane A pillar (blank = all four)"
+        description: "Lane A pillar (blank = every live topic)"
         required: false
         type: string
       question_id:
         description: "Lane B question id, e.g. EW-02"
         required: false
         type: string
-      loader:
-        description: "Lane C loader"
+      topic:
+        description: "Lane A single topic, e.g. EW-T14 (overrides pillar)"
         required: false
-        default: "attack"
+        type: string
+      loader:
+        description: "Lane C loader (attack is archived; manual only)"
+        required: false
+        default: "nvd"
         type: choice
-        options: ["attack", "nvd"]
+        options: ["nvd", "attack"]
 
 concurrency:
   group: collect-${{ github.ref }}
@@ -43,14 +49,11 @@ env:
 
 jobs:
   lane-a:
-    # daily cron, or a manual dispatch asking for lane a
+    # daily cron, or a manual dispatch asking for lane a. One job, not one per
+    # pillar: a feed bound to an EW topic and a Cyber lens topic is read once.
     if: github.event.schedule == '17 3 * * *' || github.event.inputs.lane == 'a'
     runs-on: ubuntu-latest
     timeout-minutes: 45
-    strategy:
-      fail-fast: false          # one pillar failing must not cancel the others
-      matrix:
-        pillar: [CYBERSECURITY, AI, ELECTRONIC_WARFARE, PROCUREMENT]
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
@@ -58,9 +61,15 @@ jobs:
           python-version: "3.11"
           cache: pip
       - run: pip install -r pipeline/requirements.txt
-      - name: "Lane A: scheduled feeds"
-        if: github.event.inputs.pillar == '' || github.event.inputs.pillar == matrix.pillar
-        run: python pipeline/collect.py --lane a --pillar ${{ matrix.pillar }} --limit 8
+      - name: "Lane A: feeds bound to live topics"
+        env:
+          PILLAR: ${{ github.event.inputs.pillar }}
+          TOPIC: ${{ github.event.inputs.topic }}
+        run: |
+          args="--lane a --bound --limit 8"
+          [ -n "$PILLAR" ] && args="$args --pillar $PILLAR"
+          [ -n "$TOPIC" ] && args="--lane a --topic $TOPIC --limit 8"
+          python pipeline/collect.py $args
 
   lane-c:
     # weekly cron, or a manual dispatch asking for lane c
@@ -74,12 +83,19 @@ jobs:
           python-version: "3.11"
           cache: pip
       - run: pip install -r pipeline/requirements.txt
+      # ATT&CK (enterprise IT intrusion sets) is archived since EW became the
+      # core pillar; it runs only when asked for by name.
       - name: "Lane C: MITRE ATT&CK"
-        if: github.event.inputs.loader != 'nvd'
+        if: github.event.inputs.loader == 'attack'
         run: python pipeline/collect.py --lane c --loader attack
-      - name: "Lane C: NVD"
+      - name: "Lane C: NVD (EW-relevant keywords)"
         if: github.event.inputs.loader != 'attack'
         run: python pipeline/collect.py --lane c --loader nvd --limit 20
+      - name: "EW document seed"
+        if: github.event.inputs.loader != 'attack'
+        run: |
+          python pipeline/collect.py --lane a \
+            $(grep -E '^https?://' docs/ew-document-seed.txt | awk '{print "--url " $1}')
 
   lane-b:
     # manual only — research starts from a strategic question, not a schedule
@@ -115,17 +131,32 @@ jobs:
         working-directory: pipeline
         run: |
           set -e
-          QIDS=$(python - <<'PY'
+          # One line per search: "q<TAB>question id" for each question on a live
+          # topic, and "t<TAB>pillar<TAB>search query" for every live topic's
+          # own GDELT query (029), so no live topic goes unsearched.
+          python - > plan.tsv <<'PY'
           import sys; sys.path.insert(0,'.')
           from config import db
+          sb = db()
           only = "${{ github.event.inputs.question_id }}".strip()
-          rows = db().table("questions").select("id").order("id").execute().data
-          ids = [only] if only else [r["id"] for r in rows]
-          print(" ".join(ids))
+          if only:
+              print("q\t" + only); raise SystemExit
+          live = {t["id"]: t for t in sb.table("topics").select("id,pillar,search_query")
+                  .is_("retired_at", "null").execute().data}
+          for q in sb.table("questions").select("id,topic_id").order("id").execute().data:
+              if q["topic_id"] in live:
+                  print("q\t" + q["id"])
+          for tid, t in sorted(live.items()):
+              if t.get("search_query"):
+                  print("t\t%s\t%s" % (t["pillar"], t["search_query"]))
           PY
-          )
-          echo "questions: $QIDS"
-          for q in $QIDS; do
-            echo "── $q ──"
-            python collect.py --lane b --question-id "$q" --limit 6 || echo "  ($q failed, continuing)"
-          done
+          echo "searches: $(wc -l < plan.tsv)"
+          while IFS=$'\t' read -r kind a b; do
+            if [ "$kind" = q ]; then
+              echo "── question $a ──"
+              python collect.py --lane b --question-id "$a" --limit 6 || echo "  ($a failed, continuing)"
+            else
+              echo "── topic: $b ($a) ──"
+              python collect.py --lane b --query "$b" --raw-query --pillar "$a" --limit 6 || echo "  ($b failed, continuing)"
+            fi
+          done < plan.tsv

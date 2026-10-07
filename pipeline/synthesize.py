@@ -178,7 +178,7 @@ one, rather than restating them as new signals:
 def _fetch_evidence(sb, pillar):
     return (sb.table("evidence")
             .select("id,claim,class,confidence,env_layer,steep,topic_id")
-            .eq("pillar", pillar).order("id").execute().data)
+            .eq("pillar", pillar).is_("archived_at", "null").order("id").execute().data)
 
 
 def _format_register(rows):

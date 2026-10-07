@@ -35,6 +35,9 @@ class EvidenceCandidate(BaseModel):
     question_id: Optional[str] = None
     quote_span: str = Field(min_length=10, max_length=400,
                             description="verbatim words from the document supporting the claim")
+    ew_hook: str = Field(default="", max_length=200,
+                         description="verbatim words inside quote_span that tie the claim "
+                                     "to the topic's EW functions; checked in extract.py")
     # NOTE: class + confidence are NOT here on purpose — the rules engine assigns them.
 
 class AttrPair(BaseModel):

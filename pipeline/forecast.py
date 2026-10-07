@@ -112,7 +112,7 @@ def load_graph(sb, pillar: str) -> Dict[str, list]:
     g = {}
     g["evidence"] = (sb.table("evidence")
                      .select("id,claim,class,confidence,env_layer,quote_span")
-                     .eq("pillar", pillar).execute().data)
+                     .eq("pillar", pillar).is_("archived_at", "null").execute().data)
     g["signals"] = (sb.table("signals")
                     .select("id,statement,strength,direction,env_layer")
                     .eq("pillar", pillar).execute().data)
@@ -230,7 +230,8 @@ def _signal_lookup(sb, pillar: str) -> Dict[str, str]:
 
 def admit(sb, pillar: str, proposals: List[ForecastProposal], uae_gate_open: bool) -> int:
     sig_lookup = _signal_lookup(sb, pillar)
-    valid_ev = {e["id"] for e in sb.table("evidence").select("id").eq("pillar", pillar).execute().data}
+    valid_ev = {e["id"] for e in sb.table("evidence").select("id").eq("pillar", pillar)
+                .is_("archived_at", "null").execute().data}
     valid_unc = {u["id"] for u in sb.table("uncertainties").select("id").eq("pillar", pillar).execute().data}
     strength_of = {s["id"]: s["strength"] for s in
                    sb.table("signals").select("id,strength").eq("pillar", pillar).execute().data}

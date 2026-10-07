@@ -253,7 +253,8 @@ def main():
     sb = db()
     P = a.pillar
 
-    ev = sb.table("evidence").select("id,claim,class,env_layer,topic_id").eq("pillar", P).execute().data
+    ev = (sb.table("evidence").select("id,claim,class,env_layer,topic_id").eq("pillar", P)
+          .is_("archived_at", "null").execute().data)
     sig = sb.table("signals").select("id,statement,strength,horizon").eq("pillar", P).execute().data
     tr = sb.table("trends").select("id,name,statement,direction").eq("pillar", P).execute().data
     fi = sb.table("findings").select("id,statement").eq("pillar", P).execute().data

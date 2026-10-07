@@ -24,6 +24,8 @@ out/
 # published. They stay local; the pipeline reads them from disk when needed.
 docs/source/
 docs/poc-progress-report.docx
+# Database snapshots carry document text from the same material.
+db/dumps/
 
 # ── local tooling ──────────────────────────────────────────────────────
 .claude/

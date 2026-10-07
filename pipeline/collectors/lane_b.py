@@ -179,6 +179,7 @@ def collect_serper(sb, query, pillar=None, limit=5, dry_run=False) -> int:
     """Site-scoped search over the Tier 1/2 registry rows whose method='search'."""
     key = os.environ.get("SERPER_API_KEY")
     rows = [r for r in load_registry(sb, dry_run) if r["method"] == "search"
+            and not r.get("archived_at")
             and (pillar is None or pillar in (r.get("pillars") or []))]
     if not rows:
         return 0
@@ -215,7 +216,7 @@ def collect_serper(sb, query, pillar=None, limit=5, dry_run=False) -> int:
 
 
 def run(sb, question_id=None, query=None, pillar=None, limit=10,
-        timespan="3months", sourcecountry=None, dry_run=False) -> int:
+        timespan="3months", sourcecountry=None, dry_run=False, raw=False) -> int:
     if question_id:
         question = None
         if sb is not None and not dry_run:
@@ -225,13 +226,20 @@ def run(sb, question_id=None, query=None, pillar=None, limit=10,
         if not question:
             raise SystemExit("question %s not found — seed the question bank first"
                              % question_id)
+        # Questions left on a retired topic (025: not EW-linked) are out of scope.
+        topic = (sb.table("questions").select("topics(retired_at)")
+                 .eq("id", question_id).execute().data or [{}])[0].get("topics") or {}
+        if topic.get("retired_at"):
+            raise SystemExit("question %s sits on a retired topic — it has no EW "
+                             "link and is no longer asked" % question_id)
         pillar = pillar or question["pillar"]
         query = derive_query(question["text"])
         log("LANE B · question %s (%s)" % (question_id, pillar))
         log('  "%s"' % question["text"])
         log("  derived GDELT query: %s" % query)
     elif query:
-        query = derive_query(query)
+        # raw: a query already written in GDELT syntax (topics.search_query).
+        query = query if raw else derive_query(query)
         log("LANE B · ad-hoc query")
         log("  derived GDELT query: %s" % query)
     else:

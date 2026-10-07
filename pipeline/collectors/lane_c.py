@@ -26,7 +26,8 @@ ATTACK_REGISTRY_ID = "SRC-T1-009"
 
 NVD_URL = "https://services.nvd.nist.gov/rest/json/cves/2.0"
 NVD_REGISTRY_ID = "SRC-T1-008"
-NVD_KEYWORDS = ["command and control", "UAV", "GNSS", "SCADA"]
+# EW-core (026): vulnerabilities in what EW and counter-UAS systems are built on.
+NVD_KEYWORDS = ["UAV", "drone", "GNSS", "software defined radio", "radar"]
 
 # Public NVD rate limit without an API key: 5 requests / 30s. 6s spacing is safe.
 _nvd_limit = RateLimiter(6.0)

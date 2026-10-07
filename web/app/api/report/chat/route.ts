@@ -27,7 +27,7 @@ export async function POST(req: Request) {
   // ---- the graph this passage may draw on -------------------------------
   const pillar = report.pillar;
   const [ev, sig, fc, gates, prior] = await Promise.all([
-    sb.from("evidence").select("id,claim,class,confidence,env_layer,quote_span").eq("pillar", pillar),
+    sb.from("evidence").select("id,claim,class,confidence,env_layer,quote_span").eq("pillar", pillar).is("archived_at", null),
     sb.from("signals").select("id,statement,strength,direction").eq("pillar", pillar),
     sb.from("forecasts").select("id,statement,horizon,plausibility,confidence,falsifier").eq("pillar", pillar),
     sb.from("validation_gates").select("id,blocks").eq("status", "OPEN"),

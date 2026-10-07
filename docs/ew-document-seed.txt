@@ -1,0 +1,60 @@
+# EW-core document seed — Tier 1 and Tier 2 documents for the EW topics.
+#
+# Each URL was fetched and its content confirmed on 2026-10-07. These come in
+# document by document rather than by feed:
+#
+#   make seed-ew            # ingests every uncommented URL (documents only)
+#
+# Format: URL  # tier · publisher · title · topics
+# Lines starting with "#!" need the stealth fetch (set CAMOFOX_URL), because
+# the publisher returns 403 or a Cloudflare challenge to a plain client.
+
+# ---- Tier 1: official ----
+https://www.everycrsreport.com/reports/IF11118.html  # T1 · CRS · Defense Primer: Electronic Warfare (2022) · EW-T10..T13
+https://www.everycrsreport.com/reports/R48477.html  # T1 · CRS · DoD Counter-UAS: Background and Issues (2025) · EW-T16 EW-T19 EW-T11
+https://www.everycrsreport.com/reports/R46925.html  # T1 · CRS · DoD Directed Energy Weapons (2024) · EW-T11
+https://www.everycrsreport.com/reports/R46564.html  # T1 · CRS · DoD Use of the Electromagnetic Spectrum (2021) · EW-T15
+#! https://ad.easa.europa.eu/ad/2022-02R4  # (page is a JS tool shell; the SIB itself is an attached PDF — find its link) T1 · EASA · SIB 2022-02R4 GNSS outage and alterations (2026) · EW-T14
+https://www.easa.europa.eu/en/downloads/143429/en  # T1 · EASA/EUROCONTROL · GNSS RFI Action Plan (2025) · EW-T14
+https://www.easa.europa.eu/en/newsroom-and-events/press-releases/easa-partners-iata-counter-aviation-safety-threat-gnss-spoofing  # T1 · EASA · counter GNSS spoofing and jamming (2024) · EW-T14
+https://www.eurocontrol.int/system/files/2026-07/gnss-rfi-workshop_slides_final.pdf  # T1 · EUROCONTROL · Satellite Navigation Under Threat (2026) · EW-T14
+https://www.eurocontrol.int/sites/default/files/2025-06/20250603-best-practices-cuas-berz-eurocontrol.pdf  # T1 · EUROCONTROL · GNSS RFI and C-UAS best practices (2025) · EW-T14 EW-T15 EW-T16
+https://www.caa.co.uk/publication/download/25010  # T1 · UK CAA · SN-2025/006 GNSS RFI (2025) · EW-T14
+https://assets.publishing.service.gov.uk/media/65d724022197b201e57fa708/Defence_Drone_Strategy_-_the_UK_s_approach_to_Defence_Uncrewed_Systems.pdf  # T1 · UK MOD · Defence Drone Strategy (2024) · EW-T19 PR-T11
+https://www.gov.uk/government/news/british-soldiers-take-down-drone-swarm-in-groundbreaking-use-of-radio-wave-weapon  # T1 · UK MOD · RF directed energy defeats a swarm (2025) · EW-T11
+https://www.gov.uk/government/news/uk-to-deliver-pioneering-battlefield-system-and-bolster-cyber-warfare-capabilities-under-strategic-defence-review  # T1 · UK MOD · CyberEM under the SDR (2025) · CS-T10
+https://www.nato.int/en/news-and-events/articles/news/2026/07/07/nato-allies-invest-40-billion-dollars-in-counter-drone-capabilities-and-drone-training  # T1 · NATO · $40bn in counter-drone (2026) · EW-T16 PR-T11
+https://eda.europa.eu/docs/default-source/eda-magazine/edm30---european-defence-matters-shelter-from-the-swarm.pdf  # T1 · EDA · Shelter from the swarm (2026) · EW-T16 EW-T19
+#! https://www.gao.gov/products/gao-21-64  # T1 · GAO · EMS Operations governance (2020) · EW-T15 PR-T11
+#! https://www.gao.gov/products/gao-23-105868  # T1 · GAO · Directed energy transition planning (2023) · EW-T11 PR-T11
+#! https://www.gao.gov/products/gao-21-320sp  # T1 · GAO · PNT technologies to complement GPS (2021) · EW-T14
+#! https://www.gao.gov/products/gao-22-105705  # T1 · GAO · Counter-drone technologies (2022) · EW-T16
+#! https://www.icao.int/sites/default/files/MID/MeetingDocs/2025/Fourteenth%20Meeting%20of%20the%20of%20the%20MIDANPIRG%20Communication%2C%20Navigation%20and%20Surveillance%20Sub-Group%20%28CNS%20SG/2-%20Documentation/WP05.pdf  # T1 · ICAO MID (UAE) · UAE surveillance integrity against GNSS interference (2025) · EW-T14 — UAE layer
+#! https://www.icao.int/sites/default/files/MID/MeetingDocs/2025/Fourteenth%20Meeting%20of%20the%20of%20the%20MIDANPIRG%20Communication%2C%20Navigation%20and%20Surveillance%20Sub-Group%20%28CNS%20SG/2-%20Documentation/WP09.pdf  # T1 · ICAO MID (Oman) · Mitigating GNSS vulnerabilities (2025) · EW-T14
+#! https://media.defense.gov/2020/Oct/29/2002525927/-1/-1/0/ELECTROMAGNETIC_SPECTRUM_SUPERIORITY_STRATEGY.PDF  # T1 · DoD · EMS Superiority Strategy (2020) · EW-T15
+
+# ---- Tier 2: research ----
+https://static.rusi.org/competitive-electronic-warfare-in-land-operations_1.pdf  # T2 · RUSI · Competitive EW in Modern Land Operations (2025) · EW-T10 EW-T12 EW-T13 PR-T10
+https://static.rusi.org/protecting-the-force-from-uncrewed-uas.pdf  # T2 · RUSI · Protecting the Force from UAS (2024) · EW-T16 EW-T19
+https://static.rusi.org/tactical-developments-third-year-russo-ukrainian-war-february-2205.pdf  # T2 · RUSI · Tactical Developments, Third Year (2025) · EW-T17 EW-T14
+https://www.rusi.org/explore-our-research/publications/insights-papers/emergent-approaches-combined-arms-manoeuvre-ukraine  # T2 · RUSI · Combined arms manoeuvre in Ukraine (2025) · EW-T17 EW-T13
+https://static.rusi.org/359-SR-Ukraine-Preliminary-Lessons-Feb-July-2022-web-final.pdf  # T2 · RUSI · Preliminary Lessons Feb–Jul 2022 · EW-T10 EW-T18
+https://www.csis.org/analysis/drone-saturation-russias-shahed-campaign  # T2 · CSIS · Drone Saturation: Shahed campaign (2025) · EW-T19 EW-T12
+https://www.csis.org/analysis/russia-ukraine-drone-war-innovation-frontlines-and-beyond  # T2 · CSIS · Russia-Ukraine Drone War (2025) · EW-T17 EW-T19
+#! https://www.rand.org/content/dam/rand/pubs/research_reports/RRA900/RRA981-1/RAND_RRA981-1.pdf  # T2 · RAND · Outsmarting Agile Adversaries in the EMS (2023) · AI-T10 PR-T10
+#! https://www.rand.org/content/dam/rand/pubs/research_reports/RRA2600/RRA2642-4/RAND_RRA2642-4.pdf  # T2 · RAND · sUAS in Divisional Brigades: EW and Spectrum (2025) · EW-T15 EW-T16
+https://www.mitchellaerospacepower.org/app/uploads/2026/08/CUAV_Policy_Paper_66-FINAL.pdf  # T2 · Mitchell · Counter-small-UAV, Policy Paper 66 (2026) · EW-T16 PR-T14
+https://www.japcc.org/articles/electronic-warfare-in-ukraine/  # T2 · JAPCC · EW in Ukraine: lessons for NATO air power (2023) · EW-T10 EW-T18
+https://www.japcc.org/articles/beyond-the-hype/  # T2 · JAPCC · Russian airborne EW shortcomings (2025) · EW-T18
+https://www.japcc.org/articles/navigating-the-digital-battlefield/  # T2 · JAPCC · Cyber Electromagnetic Activities (2025) · CS-T10
+https://www.japcc.org/online-feature/an-mdo-approach-to-natos-counter-iads-strategy/  # T2 · JAPCC · MDO approach to counter-IADS (2026) · EW-T18
+https://www.cnas.org/publications/reports/evolution-not-revolution  # T2 · CNAS · Drone warfare in Russia's invasion (2024) · EW-T19 EW-T16
+https://www.iiss.org/globalassets/media-library---content--migration/files/publications---free-files/strategic-dossier/uavs-2026/iiss_ch-3-uavs-isr-deterrence-and-war_032026.pdf  # T2 · IISS · UAVs Strategic Dossier ch.3 (2026) · EW-T19 EW-T12
+
+# ---- Tier 3/4: UAE-specific ----
+https://www.iata.org/en/pressroom/2025-releases/2025-06-18-01/  # T3 · IATA · EASA–IATA plan on GNSS interference (2025) · EW-T14
+https://www.khaleejtimes.com/uae/uae-air-defence-system-iran-attacks-edge-group  # T4 · Khaleej Times · UAE-made jammers stopped 85% of Iranian drones (2026) · EW-T16 PR-T12 — UAE layer
+
+# Not seeded: the Hudson Institute PDFs (Clark, 2021 and 2024) are hosted on a
+# generic amazonaws.com bucket, so their host cannot be attributed to Hudson
+# without misattributing every other file on S3.

@@ -30,7 +30,7 @@ function Rows({ children, empty }: { children: React.ReactNode; empty: string })
 
 export default async function Overview() {
   const [ev, docs, srcs, gates, signals, reports, recentDocs] = await Promise.all([
-    supabase.from("evidence").select("id", { count: "exact", head: true }),
+    supabase.from("evidence").select("id", { count: "exact", head: true }).is("archived_at", null),
     supabase.from("documents").select("id", { count: "exact", head: true }),
     supabase.from("source_registry").select("id", { count: "exact", head: true }),
     supabase.from("validation_gates").select("*").order("id"),

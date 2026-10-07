@@ -5,6 +5,8 @@
   LANE C  structured APIs        MITRE ATT&CK STIX + NVD, straight to entities
 
   python collect.py --lane a --pillar CYBERSECURITY --limit 3
+  python collect.py --lane a --bound --limit 8      # feeds bound to live topics
+  python collect.py --lane a --topic EW-T14
   python collect.py --lane b --question-id EW-02
   python collect.py --lane b --query "counter-UAS UAE"
   python collect.py --lane c --loader attack
@@ -35,8 +37,13 @@ def main():
     # No global default: "5" means 5 entries per feed in Lane A, but silently
     # capping Lane C at 5 of 36 threat actors is wrong. Each lane applies its own.
     ap.add_argument("--limit", type=int, default=None)
+    ap.add_argument("--bound", action="store_true",
+                    help="lane a: only feeds bound to live topics (of --pillar, or all)")
+    ap.add_argument("--topic", help="lane a: only feeds bound to this topic, e.g. EW-T14")
     ap.add_argument("--question-id", help="lane b: derive the query from this question")
     ap.add_argument("--query", help="lane b: ad-hoc query text")
+    ap.add_argument("--raw-query", action="store_true",
+                    help="lane b: --query is already GDELT syntax; send it unchanged")
     ap.add_argument("--url", action="append",
                     help="lane a: ingest this specific document (repeatable)")
     ap.add_argument("--depth", type=int, default=0,
@@ -68,14 +75,16 @@ def main():
     if args.lane == "a":
         if args.url:
             lane_a.run_urls(sb, args.url, dry_run=args.dry_run, depth=args.depth)
-        elif args.pillar:
-            lane_a.run(sb, args.pillar, limit=args.limit or 5, dry_run=args.dry_run)
+        elif args.pillar or args.bound or args.topic:
+            lane_a.run(sb, args.pillar, limit=args.limit or 5, dry_run=args.dry_run,
+                       bound=args.bound, topic=args.topic)
         else:
-            ap.error("lane a requires --pillar or --url")
+            ap.error("lane a requires --pillar, --bound, --topic or --url")
     elif args.lane == "b":
         lane_b.run(sb, question_id=args.question_id, query=args.query,
                    pillar=args.pillar, limit=args.limit or 10, timespan=args.timespan,
-                   sourcecountry=args.sourcecountry, dry_run=args.dry_run)
+                   sourcecountry=args.sourcecountry, dry_run=args.dry_run,
+                   raw=args.raw_query)
     else:
         if not args.loader:
             ap.error("lane c requires --loader attack|nvd")
