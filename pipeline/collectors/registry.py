@@ -158,6 +158,37 @@ SOURCES = [
     ("SRC-T4-023", 4, "Khaleej Times", "https://www.khaleejtimes.com",
      "search", [EW, PR], "UAE-based reporting on Gulf air defence and EDGE"),
 
+    # UAE layer (030): publishers of the UAE documents in the EW seed, so they
+    # keep their own tier instead of falling to the aggregator.
+    ("SRC-T2-008", 2, "The Washington Institute", "https://www.washingtoninstitute.org",
+     "search", [EW], "Gulf security analysis, incl. Houthi strikes on the UAE"),
+    ("SRC-T2-009", 2, "Indian Council of World Affairs", "https://icwa.in",
+     "search", [EW], "Foreign-policy council; Houthi drone attacks on the UAE"),
+    ("SRC-T2-010", 2, "Gulf International Forum", "https://gulfif.org",
+     "search", [EW, PR, AI], "Gulf policy analysis — UAE defence industry and EDGE"),
+    ("SRC-T2-011", 2, "ORF Middle East", "https://orfme.org",
+     "search", [EW, PR, AI], "UAE defence-technology priorities"),
+    ("SRC-T3-005", 3, "RICS", "https://www.rics.org",
+     "search", [EW], "Professional body; geospatial group on GNSS spoofing in the Gulf"),
+    ("SRC-T4-024", 4, "Oman Observer", "https://www.omanobserver.om",
+     "search", [EW], "Gulf reporting (AFP) on GNSS disruption in the UAE"),
+    ("SRC-T4-025", 4, "European Security & Defence", "https://euro-sd.com",
+     "search", [EW, PR], "Defence-show reporting on EDGE C-UAS"),
+    ("SRC-T4-026", 4, "Raksha Anirveda", "https://raksha-anirveda.com",
+     "search", [EW, PR], "Defence news; UAE MoD anti-jamming contracts"),
+    ("SRC-T4-027", 4, "Defence Industry Europe", "https://defence-industry.eu",
+     "search", [EW, PR], "Defence-industry news; EDGE EW systems"),
+    ("SRC-T4-028", 4, "Army Recognition", "https://www.armyrecognition.com",
+     "search", [EW, PR, AI], "Defence-show reporting; UMEX counter-drone systems"),
+    ("SRC-T4-029", 4, "SatellitePro ME", "https://satelliteprome.com",
+     "search", [EW], "UAE spectrum regulation (TDRA)"),
+    ("SRC-T4-030", 4, "Military Times", "https://www.militarytimes.com",
+     "search", [EW], "US reporting on Houthi drone attacks near Al Dhafra"),
+    ("SRC-T4-031", 4, "Ynet News", "https://www.ynetnews.com",
+     "search", [EW, PR], "UAE air-defence procurement after the 2022 strikes"),
+    ("SRC-T4-032", 4, "Kuwait Times", "https://kuwaittimes.com",
+     "search", [EW], "Gulf reporting (AFP) on the Houthi drone threat to the UAE"),
+
     # ---------------- AGGREGATOR — Lane B fallback only ------------------------
     ("SRC-API-001", 4, "GDELT DOC 2.0 (aggregator)", "https://api.gdeltproject.org/api/v2/doc/doc",
      "api", ALL, "LANE B. Tier 4 by construction: an aggregator never confers "

@@ -58,3 +58,31 @@ https://www.khaleejtimes.com/uae/uae-air-defence-system-iran-attacks-edge-group 
 # Not seeded: the Hudson Institute PDFs (Clark, 2021 and 2024) are hosted on a
 # generic amazonaws.com bucket, so their host cannot be attributed to Hudson
 # without misattributing every other file on S3.
+
+# ---- UAE layer (added 2026-10-08) ----
+# Fetched and checked for UAE + EW content on 2026-10-08. No Tier 1 UAE source
+# is fetchable without the stealth browser; the ICAO MID paper above is #!.
+https://www.washingtoninstitute.org/policy-analysis/houthi-strikes-uae-open-another-front-yemen-war  # T2 · Washington Institute · Houthi Strikes on UAE Open Another Front in Yemen War (2022) · EW-T19
+https://icwa.in/show_content.php?lang=1&level=3&ls_id=11192&lid=4783  # T2 · Indian Council of World Affairs · Implications of Houthi Drone and Missile Attacks on the UAE (2022) · EW-T19
+#! https://gulfif.org/sharpening-the-edge-how-the-uae-plans-to-out-innovate-its-rivals/  # T2 · Gulf International Forum · Sharpening the EDGE (2025) · PR-T10 EW-T16 AI-T11
+https://orfme.org/expert-speak/the-uaes-defence-technology-priorities-resilience-dual-use-capabilities-sovereignty/  # T2 · ORF Middle East · The UAE's defence technology priorities (2026) · EW-T16 EW-T11 PR-T11 AI-T11
+https://www.rics.org/news-insights/gnss-spoofing-and-mitigation-in-the-arabian-gulf  # T3 · RICS · GNSS Spoofing and Mitigation in the Arabian Gulf (2026) · EW-T14
+https://www.thenationalnews.com/future/technology/2026/03/05/gps-jamming-gps-spoofing-uae/  # T4 · The National · GPS jamming and spoofing on the increase (2026) · EW-T14
+https://www.omanobserver.om/article/1186020/world/region/how-war-is-messing-with-gps-in-the-uae  # T4 · Oman Observer (AFP) · How war is messing with GPS in the UAE (2026) · EW-T14 EW-T16
+https://www.defensenews.com/unmanned/2021/05/24/boosted-by-international-expertise-uae-edges-closer-to-homemade-counter-drone-tech/  # T4 · Defense News · UAE edges closer to homemade counter-drone tech (2021) · EW-T16 EW-T11 PR-T10
+https://www.defensenews.com/global/mideast-africa/2023/02/17/rafael-to-show-of-laser-weapon-at-idex-opens-new-facility-in-uae/  # T4 · Defense News · Rafael laser weapon at IDEX, new UAE facility (2023) · EW-T11 PR-T11
+https://euro-sd.com/?p=29799  # T4 · European Security & Defence · IDEX 2023: EDGE C-UAS exports (2023) · EW-T16 PR-T10
+https://www.unmannedairspace.info/counter-uas-systems-and-policies/edge-group-announces-major-uae-mod-c-uas-award-at-umex/  # T4 · Unmanned Airspace · EDGE UAE MoD C-UAS award at UMEX (2024) · EW-T16 PR-T11
+https://raksha-anirveda.com/?p=110264  # T4 · Raksha Anirveda · EDGE UAE MoD contract for GPS anti-jamming (2025) · EW-T14 PR-T11
+https://defence-industry.eu/uae-defence-group-edge-to-debut-at-partner-2025-with-advanced-uav-radar-and-electronic-warfare-systems/  # T4 · Defence Industry Europe · EDGE UAV, radar and EW systems at Partner 2025 (2025) · PR-T10 EW-T14 EW-T16
+https://www.armyrecognition.com/archives/archives-defense-exhibitions/2026-archives-news-defense-exhibitions/umex-2026/uae-edge-develops-new-generation-counter-drone-capability-with-vortex-e-autonomous-kinetic-interceptor  # T4 · Army Recognition · EDGE VORTEX-E counter-drone interceptor (2026) · EW-T11 AI-T11 PR-T10
+https://www.khaleejtimes.com/uae/uae-deals-with-15-missiles-119-drones-day-8-iran-war  # T4 · Khaleej Times · 15 missiles, 119 drones on Day 8 of Iran war (2026) · EW-T19 EW-T16
+https://www.khaleejtimes.com/uae/approves-updated-regulation-radio-systems-unmanned-aircraft  # T4 · Khaleej Times · Radio-systems regulation for unmanned aircraft (2026) · EW-T15
+https://satelliteprome.com/news/tdra-approves-regulatory-updates-to-radio-spectrum-frameworks/  # T4 · SatellitePro ME · TDRA radio spectrum framework updates (2026) · EW-T15
+https://www.militarytimes.com/flashpoints/2022/01/17/us-condemns-deadly-houthi-drone-attack-on-uae-oil-facility-near-al-dhafra/  # T4 · Military Times · Houthi drone attack near Al Dhafra (2022) · EW-T19
+https://www.ynetnews.com/business/article/sy049sh6f  # T4 · Ynet News · UAE to expand Israeli air-defence tech (2022) · EW-T16 PR-T11
+https://kuwaittimes.com/houthi-drones-pose-challenge-for-uae/  # T4 · Kuwait Times (AFP) · Houthi drones pose challenge for UAE (2022) · EW-T19 EW-T14
+#! https://breakingdefense.com/2026/05/edge-ceo-talks-companys-role-in-iran-conflict-plus-future-partnerships/  # T4 · Breaking Defense · EDGE CEO on the Iran conflict (2026) · PR-T10 EW-T16
+#! https://breakingdefense.com/2026/03/uae-fights-off-outsized-share-of-iranian-attacks-pulls-back-on-sharing-interception-rates/  # T4 · Breaking Defense · UAE fights off outsized share of Iranian attacks (2026) · EW-T19 EW-T16
+#! https://edgegroupuae.com/share/print/news/983  # T4 · EDGE Group · GPS PROTECT anti-jamming MoD contract (2025) · EW-T14 PR-T11
+#! https://www.dawn.com/news/1981534  # T4 · Dawn (AFP) · GPS glitches in UAE put ships on land (2026) · EW-T14
