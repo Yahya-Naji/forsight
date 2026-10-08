@@ -54,7 +54,9 @@ OBJECT_REF = re.compile(
     # claim, and eleven sections were withheld for citing the graph.
     r"|S\d{1,2}|OPT-[A-Z]|IMP-[A-Z]{3}-\d+|DRV-\d+|CI-\d+"
     r"|INIT-\d+|ACT-\d+|PDC-\d+|IND-[A-Z]{2}-\d+|O\d{1,2}"
-    r"|[A-Z]{2}-T\d+|[A-Z]{2}-\d{2})\b")
+    # Validation gates before the bare XX-NN form, or "VG-EL-01" is read as
+    # the unknown id "EL-01" and a section naming its open gate is withheld.
+    r"|VG-[A-Z]{2}-\d{2}|[A-Z]{2}-T\d+|[A-Z]{2}-\d{2})\b")
 
 # A sentence that states a fact but carries no citation. Headings, table rows,
 # list scaffolding and hedged/meta sentences are not assertions.
@@ -341,6 +343,7 @@ def load_graph(sb, pillar) -> Dict[str, dict]:
     plain("implications", "id,statement", "implication", "statement")
     plain("questions", "id,text", "question", "text")
     plain("topics", "id,name", "topic", "name")
+    plain("validation_gates", "id,gate", "gate", "gate")
 
     for row in scoped("figures", "id,describes,caption,kind,informative,reachable"):
         if row.get("informative") and row.get("reachable"):
