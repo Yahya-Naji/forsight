@@ -625,7 +625,13 @@ def main():
     report = rows[0]
     body, pillar = report.get("body_md") or "", report.get("pillar")
 
-    graph = load_graph(sb, pillar)
+    # A report written against a brief may span several pillars; it is checked
+    # against the same graph the generator drew from.
+    pillars = [pillar]
+    if report.get("brief_id"):
+        b = sb.table("report_briefs").select("pillars").eq("id", report["brief_id"]).execute().data
+        pillars = (b[0].get("pillars") if b else None) or pillars
+    graph = load_graph(sb, pillars if len(pillars) > 1 else pillar)
     sentences = sentences_of(body)
     cited = sum(1 for s in sentences if CITATION.search(s))
     print("Verifying %r\n  %d sentences, %d carrying citations, %d graph objects\n"
