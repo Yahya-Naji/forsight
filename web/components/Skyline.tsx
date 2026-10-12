@@ -31,7 +31,7 @@ export default function Skyline() {
   }, []);
 
   return (
-    <div aria-hidden style={{ position: "absolute", inset: 0, overflow: "hidden", background: "var(--aurora)" }}>
+    <div aria-hidden style={{ position: "absolute", inset: 0, overflow: "hidden", background: "#000" }}>
       {SHOTS.map((s, n) => (
         <img
           key={s.src}
@@ -55,23 +55,23 @@ export default function Skyline() {
       <div style={{
         position: "absolute", inset: 0,
         background:
-          "linear-gradient(90deg, rgba(6,10,30,.95) 0%, rgba(6,10,30,.80) 34%, rgba(6,10,30,.42) 66%, rgba(6,10,30,.26) 100%)",
+          "linear-gradient(90deg, rgba(0,0,0,.88) 0%, rgba(0,0,0,.70) 38%, rgba(0,0,0,.40) 70%, rgba(0,0,0,.30) 100%)",
       }} />
       <div style={{
         position: "absolute", inset: 0,
-        background: "linear-gradient(180deg, rgba(6,10,30,.72) 0%, rgba(6,10,30,.10) 26%, rgba(6,10,30,.34) 78%, rgba(6,10,30,.80) 100%)",
+        background: "linear-gradient(180deg, rgba(0,0,0,.65) 0%, rgba(0,0,0,.10) 26%, rgba(0,0,0,.40) 78%, rgba(0,0,0,.85) 100%)",
       }} />
 
       <div style={{
         position: "absolute", right: 18, bottom: 14, display: "flex", alignItems: "center", gap: 10,
-        fontSize: 10.5, color: "rgba(214,223,250,.62)", fontFamily: "'Space Grotesk'", letterSpacing: .6,
+        fontSize: 11, color: "rgba(255,255,255,.5)",
       }}>
         <span>{SHOTS[i].place} · {SHOTS[i].credit}</span>
         <span style={{ display: "flex", gap: 5 }}>
           {SHOTS.map((_, n) => (
             <span key={n} style={{
               width: n === i ? 16 : 5, height: 5, borderRadius: 3,
-              background: n === i ? "var(--accent)" : "rgba(214,223,250,.34)",
+              background: n === i ? "rgba(255,255,255,.9)" : "rgba(255,255,255,.3)",
               transition: "width .4s ease, background .4s ease",
             }} />
           ))}

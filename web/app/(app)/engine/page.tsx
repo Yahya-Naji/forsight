@@ -174,7 +174,7 @@ export default async function Engine({
           <form action="/api/generate" method="post" style={{ display: "flex", flexDirection: "column", gap: 9, minWidth: 236 }}>
             <input type="hidden" name="template" value="TPL-ADVANCE-01" />
             <input type="hidden" name="pillar" value={pillar} />
-            <label style={{ fontSize: 11, color: "#9FB0E6", letterSpacing: .4 }}>Run it on a question</label>
+            <label style={{ fontSize: 11, color: "#A1A1A6", letterSpacing: .4 }}>Run it on a question</label>
             <input name="title" defaultValue="What changed, what follows, what to decide"
                    style={{
                      fontFamily: "inherit", fontSize: 13, padding: "9px 12px", borderRadius: 10,

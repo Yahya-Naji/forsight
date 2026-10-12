@@ -8,8 +8,8 @@ type Step = "topic" | "sources" | "done";
 // Two steps on purpose: a topic with no sources collects nothing, so the source
 // binding is part of creating it rather than a setting somebody may forget.
 
-export default function AddTopic({ pillar, pillarLabel, sources, ewFunctions }: {
-  pillar: string; pillarLabel: string; sources: Source[]; ewFunctions: EwFunction[];
+export default function AddTopic({ pillar, pillarLabel, sources, ewFunctions, nodeId }: {
+  pillar: string; pillarLabel: string; sources: Source[]; ewFunctions: EwFunction[]; nodeId?: string;
 }) {
   const [open, setOpen] = useState(false);
   const [step, setStep] = useState<Step>("topic");
@@ -51,7 +51,7 @@ export default function AddTopic({ pillar, pillarLabel, sources, ewFunctions }: 
       const r = await fetch("/api/topics", {
         method: "POST", headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ pillar, name, description: desc, uae_relevance: rel, sources: picked,
-                               ew_functions: fns, ew_impact: impact }),
+                               ew_functions: fns, ew_impact: impact, node_id: nodeId }),
       });
       const d = await r.json();
       if (!r.ok) { setErr(d.error ?? "Could not create the topic."); return; }

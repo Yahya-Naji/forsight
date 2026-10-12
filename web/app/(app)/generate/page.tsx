@@ -76,7 +76,7 @@ export default async function Generate({ searchParams }: { searchParams?: { run?
                   border: complete || active || stalled ? "none" : "1.5px solid #5A6698",
                 }}>{stalled ? "!" : complete ? "✓" : active ? "•" : ""}</span>
                 <span style={{ fontSize: 14, fontWeight: 600, width: 160 }}>{name}</span>
-                <span style={{ fontSize: 12.5, color: "#9FB0E6" }}>{sub}</span>
+                <span style={{ fontSize: 12.5, color: "#A1A1A6" }}>{sub}</span>
                 {typeof n === "number" && (
                   <span style={{ marginLeft: "auto", fontSize: 12, fontWeight: 700, color: "#C6CFF2" }}>{n}</span>
                 )}

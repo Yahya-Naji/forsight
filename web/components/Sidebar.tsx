@@ -1,9 +1,10 @@
 "use client";
+import * as React from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
-import { PILLAR_LABEL } from "@/components/chips";
+import { supabase } from "@/lib/supabase";
 
 // Navigation follows the pipeline, not the database: a reader moves from where
 // evidence comes from, through what it became, to what was written and how it
@@ -11,8 +12,9 @@ import { PILLAR_LABEL } from "@/components/chips";
 // hide the argument the console is making.
 const NAV = [
   { href: "/overview", label: "Overview" },
+  { href: "/tree", label: "Tree" },
   { href: "/console", label: "System" },
-  { href: "/pillars/CYBERSECURITY", label: "Pillars", match: "/pillars", children: true },
+  { href: "/pillars/EW", label: "Pillars", match: "/pillars", children: true },
   { href: "/sources", label: "Sources" },
   { href: "/evidence", label: "Evidence" },
   { href: "/generate", label: "Generate" },
@@ -22,7 +24,55 @@ const NAV = [
   { href: "/scorecard", label: "Scorecard" },
 ] as const;
 
-const PILLARS = Object.keys(PILLAR_LABEL);
+// The EW tree's sub-pillars (migration 031), so the menu renders before the
+// live list arrives; the database is the source of truth once it loads.
+const SUB_PILLARS = [
+  ["EA", "Electronic Attack"], ["EP", "Electronic Protection"], ["ES", "Electronic Support"],
+  ["EMSO", "Spectrum Operations"], ["CUAS", "Counter-UAS"], ["CYBER", "Cybersecurity"],
+  ["AI", "Artificial Intelligence"], ["PROCUREMENT", "Procurement"],
+].map(([id, name]) => ({ id, name }));
+const LEGACY: Record<string, string> = {
+  ELECTRONIC_WARFARE: "EW", CYBERSECURITY: "CYBER", AI: "AI", PROCUREMENT: "PROCUREMENT",
+};
+
+type Topic = { id: string; name: string; node_id: string | null };
+
+function PillarTree({ path }: { path: string }) {
+  const [branches, setBranches] = React.useState(SUB_PILLARS);
+  const [topics, setTopics] = React.useState<Topic[]>([]);
+  React.useEffect(() => {
+    supabase.from("nodes").select("id,name,sort").eq("kind", "branch").order("sort")
+      .then(({ data }) => { if (data?.length) setBranches(data); });
+    supabase.from("topics").select("id,name,node_id").is("retired_at", null).order("id")
+      .then(({ data }) => setTopics(data ?? []));
+  }, []);
+  const seg = decodeURIComponent(path.split("/")[2] ?? "").toUpperCase();
+  const current = LEGACY[seg] ?? seg;
+  const link = (on: boolean) => cn("block truncate py-[4px] transition-colors hover:text-ink",
+    on ? "font-semibold text-ink" : "text-[#86868B]");
+  return (
+    <div className="flex flex-col pl-[26px] text-sm">
+      <Link href="/pillars/EW" className={cn(link(current === "EW"), "px-2")}>Electronic Warfare</Link>
+      <div className="ml-2.5 flex flex-col border-l border-line pl-2.5">
+        {branches.map(b => (
+          <div key={b.id}>
+            <Link href={`/pillars/${b.id}`} className={link(current === b.id)}>{b.name}</Link>
+            {current === b.id && (
+              <div className="mb-1 ml-1 flex flex-col border-l border-line-soft pl-2.5 text-[12.5px]">
+                {topics.filter(t => t.node_id === b.id).map(t => (
+                  <Link key={t.id} href={`/pillars/${b.id}?topic=${t.id}`} title={t.name}
+                        className="block truncate py-[3px] text-[#86868B] transition-colors hover:text-ink">
+                    {t.name}
+                  </Link>
+                ))}
+              </div>
+            )}
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
 
 export default function Sidebar({ onAsk }: { onAsk?: () => void }) {
   const path = usePathname();
@@ -49,17 +99,7 @@ export default function Sidebar({ onAsk }: { onAsk?: () => void }) {
               {item.label}
             </Link>
 
-            {(item as any).children && (
-              <div className="flex flex-col pl-[26px] text-sm">
-                {PILLARS.map(p => (
-                  <Link key={p} href={`/pillars/${p}`} className={cn(
-                    "px-2 py-[5px] transition-colors hover:text-ink",
-                    path === `/pillars/${p}` ? "font-semibold text-ink" : "text-[#86868B]")}>
-                    {PILLAR_LABEL[p]}
-                  </Link>
-                ))}
-              </div>
-            )}
+            {(item as any).children && <PillarTree path={path} />}
           </div>
         ))}
       </nav>

@@ -58,7 +58,7 @@ export function Stat({ value, label, tone = "default" }: {
       warn ? "border-[rgba(255,183,77,.35)] bg-[rgba(255,183,77,.12)]"
            : "border-white/10 bg-white/[.06]")}>
       <div className={cn("font-display text-[28px] font-bold", warn && "text-[#FFC96B]")}>{value}</div>
-      <div className={cn("mt-0.5 text-[11px]", warn ? "text-[#E8BE85]" : "text-[#9FB0E6]")}>{label}</div>
+      <div className={cn("mt-0.5 text-[11px]", warn ? "text-[#E8BE85]" : "text-[#A1A1A6]")}>{label}</div>
     </div>
   );
 }

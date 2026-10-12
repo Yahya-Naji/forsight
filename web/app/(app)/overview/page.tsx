@@ -2,6 +2,7 @@ import { supabase } from "@/lib/supabase";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Aurora, Kicker, Stat } from "@/components/ui/section";
+import { BarList, CATEGORICAL, Columns, MetricCard, ORDINAL_4, StackBar, Tip } from "@/components/charts";
 import {
   Table, TableHeader, TableBody, TableRow, TableHead, TableCell, TableNum,
 } from "@/components/ui/table";
@@ -40,24 +41,6 @@ async function all<T>(build: () => any): Promise<T[]> {
   }
 }
 
-/** A focusable mark whose value appears on hover or focus. Every value it
- *  shows is also in the table, so the tooltip never gates anything. */
-function Tip({ label, children, className, style }: {
-  label: string; children?: React.ReactNode; className?: string; style?: React.CSSProperties;
-}) {
-  return (
-    <span tabIndex={0} aria-label={label} className={`group relative outline-none ${className ?? ""}`}
-          style={style}>
-      {children}
-      <span role="tooltip" className="pointer-events-none absolute bottom-full left-1/2 z-10 mb-1.5
-            -translate-x-1/2 whitespace-nowrap rounded-md bg-ink px-2 py-1 text-xs text-white
-            opacity-0 shadow transition-opacity group-hover:opacity-100 group-focus:opacity-100">
-        {label}
-      </span>
-    </span>
-  );
-}
-
 function StatusChip({ status }: { status: Status }) {
   const look = {
     Ready: { icon: "✓", cls: "bg-green-chip text-green-ink" },
@@ -79,7 +62,7 @@ function TrustBar({ counts, total }: { counts: Record<string, number>; total: nu
     <div className="flex h-3 w-[160px] gap-[2px]">
       {present.map((k, i) => (
         <Tip key={k} label={`${CLASS_LABEL[k]}: ${counts[k]} of ${total}`}
-             className={`h-full hover:brightness-110 focus:brightness-110
+             className={`block h-full hover:brightness-110 focus:brightness-110
                          ${i === 0 ? "rounded-l-[4px]" : ""} ${i === present.length - 1 ? "rounded-r-[4px]" : ""}`}
              style={{ width: `${(counts[k] / total) * 100}%`, background: CLASS_FILL[k], minWidth: 3 }} />
       ))}
@@ -95,12 +78,16 @@ function Momentum({ up, flat, down, max }: { up: number; flat: number; down: num
       <div className="relative h-3 w-[120px]">
         <span className="absolute left-1/2 top-[-2px] h-4 w-px bg-line" />
         {down > 0 && (
-          <Tip label={`Weakening: ${down}`} className="absolute right-1/2 top-0 h-full rounded-l-[4px] mr-[2px]"
-               style={{ width: w(down), background: DIR_FILL.WEAKENING }} />
+          <span className="absolute right-1/2 top-0 mr-[2px] flex h-full justify-end" style={{ width: w(down) }}>
+            <Tip label={`Weakening: ${down}`} className="block h-full w-full rounded-l-[4px]"
+                 style={{ background: DIR_FILL.WEAKENING }} />
+          </span>
         )}
         {up > 0 && (
-          <Tip label={`Strengthening: ${up}`} className="absolute left-1/2 top-0 h-full rounded-r-[4px] ml-[2px]"
-               style={{ width: w(up), background: DIR_FILL.STRENGTHENING }} />
+          <span className="absolute left-1/2 top-0 ml-[2px] flex h-full" style={{ width: w(up) }}>
+            <Tip label={`Strengthening: ${up}`} className="block h-full w-full rounded-r-[4px]"
+                 style={{ background: DIR_FILL.STRENGTHENING }} />
+          </span>
         )}
       </div>
       <span className="font-mono text-xs tabular-nums text-muted">
@@ -129,13 +116,21 @@ export default async function EWOverview() {
   const [branchRes, topicRes, evidence, links, docs, sigLinks, signals, gates] = await Promise.all([
     supabase.from("nodes").select("id,name,sort").eq("kind", "branch").order("sort"),
     supabase.from("topics").select("id,name,node_id").is("retired_at", null),
-    all<any>(() => supabase.from("evidence").select("id,topic_id,class,env_layer").is("archived_at", null)),
+    all<any>(() => supabase.from("evidence").select("id,topic_id,class,env_layer,created_at").is("archived_at", null)),
     all<any>(() => supabase.from("evidence_sources").select("evidence_id,document_id")),
     all<any>(() => supabase.from("documents")
       .select("id,title,url,published_on,retrieved_at,registry_id,source_registry(publisher,tier)")),
     all<any>(() => supabase.from("signal_evidence").select("signal_id,evidence_id")),
     all<any>(() => supabase.from("signals").select("id,statement,strength,direction")),
     supabase.from("validation_gates").select("id,status"),
+  ]);
+  const [findingsRes, risksRes, forecastsRes, gapsRes, lastRunRes] = await Promise.all([
+    supabase.from("findings").select("id", { count: "exact", head: true }),
+    supabase.from("risks").select("id,likelihood,impact"),
+    supabase.from("forecasts").select("id", { count: "exact", head: true }),
+    supabase.from("research_gaps").select("id", { count: "exact", head: true }),
+    supabase.from("pipeline_runs").select("status,stage,finished_at,requested_at")
+      .order("requested_at", { ascending: false }).limit(1),
   ]);
   const branches = branchRes.data ?? [];
   const topicHome = new Map((topicRes.data ?? []).map((t: any) => [t.id, t.node_id]));
@@ -225,6 +220,58 @@ export default async function EWOverview() {
         .map(t => branchName.get(topicHome.get(t))).filter(Boolean))],
     }));
 
+  // ---- whole-graph metrics -------------------------------------------------
+  const classCount = (k: string) => evidence.filter(e => e.class === k).length;
+  const classA = classCount("A");
+  const allPubs = new Set<string>(), tierOfPub = new Map<string, number>(), evByPub = new Map<string, number>();
+  const pubName = new Map<string, string>();
+  for (const l of links) {
+    if (!liveEvidence.has(l.evidence_id)) continue;
+    const d = docById.get(l.document_id);
+    if (!d?.registry_id || d.registry_id === AGGREGATOR) continue;
+    allPubs.add(d.registry_id);
+    tierOfPub.set(d.registry_id, d.source_registry?.tier ?? 4);
+    pubName.set(d.registry_id, d.source_registry?.publisher ?? d.registry_id);
+    evByPub.set(d.registry_id, (evByPub.get(d.registry_id) ?? 0) + 1);
+  }
+  // An evidence row takes the best tier among the publishers behind it.
+  const bestTier = new Map<string, number>();
+  for (const l of links) {
+    if (!liveEvidence.has(l.evidence_id)) continue;
+    const t = docById.get(l.document_id)?.source_registry?.tier;
+    if (t) bestTier.set(l.evidence_id, Math.min(t, bestTier.get(l.evidence_id) ?? 9));
+  }
+  const tierMix = [1, 2, 3, 4].map((t, i) => ({
+    label: ["Tier 1 · official", "Tier 2 · research", "Tier 3 · specialist", "Tier 4 · news"][i],
+    value: evidence.filter(e => bestTier.get(e.id) === t).length, fill: ORDINAL_4[i] }));
+  const layerMix = ["GLOBAL", "REGIONAL", "UAE"].map((k, i) => ({
+    label: k === "UAE" ? "UAE" : k[0] + k.slice(1).toLowerCase(),
+    value: evidence.filter(e => e.env_layer === k).length, fill: CATEGORICAL[i] }));
+  const liveSignals = signals.filter(s => sigLinks.some(l => l.signal_id === s.id && liveEvidence.has(l.evidence_id)));
+  const strengthMix = ["STRONG", "STRONG_EMERGING", "EMERGING", "WEAK"].map((k, i) => ({
+    label: ["Strong", "Strong emerging", "Emerging", "Weak"][i],
+    value: liveSignals.filter(s => s.strength === k).length, fill: ORDINAL_4[i] }));
+  const topPublishers = [...evByPub.entries()].sort((a, b) => b[1] - a[1]).slice(0, 8)
+    .map(([id, n]) => ({ label: pubName.get(id) ?? id, value: n, hint: `Tier ${tierOfPub.get(id)}` }));
+  const days = 21;
+  const today = new Date(); today.setHours(0, 0, 0, 0);
+  const intake = Array.from({ length: days }, (_, i) => {
+    const d = new Date(today.getTime() - (days - 1 - i) * DAY);
+    return { label: d.toLocaleDateString("en-GB", { day: "numeric", month: "short" }), start: d.getTime(), value: 0 };
+  });
+  for (const e of evidence) {
+    const t = new Date(e.created_at).getTime();
+    const slot = intake.find(p => t >= p.start && t < p.start + DAY);
+    if (slot) slot.value++;
+  }
+  // Distinct documents: a document reaching two branches is still one document.
+  const docsThisWeek = new Set(links.filter(l => liveEvidence.has(l.evidence_id)).map(l => l.document_id)
+    .filter(id => now - new Date(docById.get(id)?.retrieved_at ?? 0).getTime() <= 7 * DAY)).size;
+  const weekNew = evidence.filter(e => now - new Date(e.created_at).getTime() <= 7 * DAY).length;
+  const risks = risksRes.data ?? [];
+  const highRisks = risks.filter((r: any) => (r.likelihood ?? 0) * (r.impact ?? 0) >= 6).length;
+  const lastRun = (lastRunRes.data ?? [])[0];
+
   return (
     <div className="flex flex-col gap-5">
       <Aurora className="px-[38px] pb-[26px] pt-[34px]">
@@ -242,11 +289,26 @@ export default async function EWOverview() {
           </div>
           <div className="flex flex-wrap gap-2.5">
             <Stat value={evidence.length} label="live evidence" />
-            <Stat value={rows.reduce((n, r) => n + r.week, 0)} label="collected · 7 days" />
+            <Stat value={docsThisWeek} label="documents · 7 days" />
             <Stat value={openGates} label="gates open" tone="warn" />
           </div>
         </div>
       </Aurora>
+
+      <section className="grid grid-cols-2 gap-3 md:grid-cols-3 xl:grid-cols-6">
+        <MetricCard label="Live evidence" value={evidence.length} sub={`+${weekNew} in the last 7 days`} />
+        <MetricCard label="Class A (fact)" value={`${evidence.length ? Math.round((classA / evidence.length) * 100) : 0}%`}
+                    sub={`${classA} rows from Tier-1 publishers`} />
+        <MetricCard label="Independent publishers" value={allPubs.size}
+                    sub={`${[...tierOfPub.values()].filter(t => t === 1).length} of them Tier 1`} />
+        <MetricCard label="Signals" value={liveSignals.length}
+                    sub={`${liveSignals.filter(s => LIVE_STRENGTHS.includes(s.strength)).length} emerging or stronger`} />
+        <MetricCard label="Findings · risks · forecasts"
+                    value={`${findingsRes.count ?? 0} · ${risks.length} · ${forecastsRes.count ?? 0}`}
+                    sub={`${highRisks} risk${highRisks === 1 ? "" : "s"} scored high (L×I ≥ 6)`} />
+        <MetricCard label="Research gaps logged" value={gapsRes.count ?? 0} tone="warn"
+                    sub={lastRun ? `last run ${String(lastRun.status).toLowerCase()} · ${fmtDate(lastRun.finished_at ?? lastRun.requested_at)}` : "what the evidence could not support"} />
+      </section>
 
       <section className="flex flex-col gap-3">
         <div className="flex flex-wrap items-end justify-between gap-3">
@@ -296,6 +358,34 @@ export default async function EWOverview() {
           </p>
         </Card>
       </section>
+
+      <div className="grid grid-cols-1 gap-5 lg:grid-cols-2">
+        <section className="flex flex-col gap-3">
+          <h2 className="section-title">New evidence per day · last 21 days</h2>
+          <Card className="px-5 py-4"><Columns points={intake} /></Card>
+        </section>
+        <section className="flex flex-col gap-3">
+          <h2 className="section-title">How strong is the evidence?</h2>
+          <Card className="flex flex-col gap-5 px-5 py-4">
+            <div><Kicker className="mb-2">Best source tier behind each row</Kicker><StackBar segments={tierMix} /></div>
+            <div><Kicker className="mb-2">Signals by computed strength</Kicker><StackBar segments={strengthMix} /></div>
+          </Card>
+        </section>
+        <section className="flex flex-col gap-3">
+          <h2 className="section-title">Where the evidence is about</h2>
+          <Card className="flex flex-col gap-3 px-5 py-4">
+            <StackBar segments={layerMix} />
+            <p className="text-xs text-faint">
+              UAE means the quote itself names the UAE. All UAE validation gates stay open until two
+              Class A/B UAE rows from two publishers exist.
+            </p>
+          </Card>
+        </section>
+        <section className="flex flex-col gap-3">
+          <h2 className="section-title">Most-cited publishers</h2>
+          <Card className="px-5 py-4"><BarList rows={topPublishers} /></Card>
+        </section>
+      </div>
 
       <div className="grid grid-cols-1 gap-5 lg:grid-cols-2">
         <section className="flex flex-col gap-3">

@@ -18,7 +18,7 @@ export async function POST(req: Request) {
   const body = await req.json() as {
     pillar: string; name: string; description?: string;
     uae_relevance?: string; sources?: string[];
-    ew_functions?: string[]; ew_impact?: string;
+    ew_functions?: string[]; ew_impact?: string; node_id?: string;
   };
 
   const pillar = (body.pillar ?? "").toUpperCase();
@@ -47,8 +47,22 @@ export async function POST(req: Request) {
     .filter(n => !Number.isNaN(n));
   const id = `${CODE[pillar]}-T${String((used.length ? Math.max(...used) : 0) + 1).padStart(2, "0")}`;
 
+  // Every topic needs a home in the EW tree (migration 031): the branch the
+  // page passed, else the lens branch for its pillar, else the branch that
+  // owns its first manual function.
+  const LENS: Record<string, string> = { CYBERSECURITY: "CYBER", AI: "AI", PROCUREMENT: "PROCUREMENT" };
+  let nodeId: string | null = null;
+  const { data: branches } = await supabaseAdmin.from("nodes").select("id").eq("kind", "branch");
+  const branchIds = new Set((branches ?? []).map(b => b.id));
+  if (body.node_id && branchIds.has(body.node_id)) nodeId = body.node_id;
+  else if (LENS[pillar]) nodeId = LENS[pillar];
+  else if (ewFunctions.length) {
+    const { data: fn } = await supabaseAdmin.from("nodes").select("parent_id").eq("id", ewFunctions[0]).single();
+    nodeId = fn?.parent_id ?? null;
+  }
+
   const { error } = await supabaseAdmin.from("topics").insert({
-    id, pillar, name,
+    id, pillar, name, node_id: nodeId,
     description: body.description?.trim() || null,
     uae_relevance: body.uae_relevance?.trim() || null,
     ew_functions: ewFunctions, ew_impact: ewImpact,
