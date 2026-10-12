@@ -2,7 +2,10 @@ name: analyse
 
 # Collection runs daily but nothing downstream did, which is why three of four
 # pillars held zero evidence. This turns the stored documents into analysis:
-# extract → merge → rules → synthesize → forecast, one job per pillar.
+# extract → merge → rules per pillar, then ONE synthesis over the EW tree
+# (synthesize.py --node EW: per-topic signals plus a findings pass per branch),
+# then re-score and forecast. Synthesis is tree-wide because a topic's signals
+# feed its branch's findings across pillars; doing it per pillar split them.
 # extract.py reads only documents this pillar has not read yet, keeps a claim
 # only with a verbatim EW hook, and skips archived sources.
 #
@@ -79,19 +82,6 @@ jobs:
         if: steps.gate.outputs.run == 'true'
         run: python rules.py
 
-      - name: Synthesize
-        if: steps.gate.outputs.run == 'true'
-        run: python synthesize.py --pillar ${{ matrix.pillar }}
-
-      # Strength depends on corroboration, which synthesis just changed.
-      - name: Rules (rescore)
-        if: steps.gate.outputs.run == 'true'
-        run: python rules.py
-
-      - name: Forecast
-        if: steps.gate.outputs.run == 'true'
-        run: python forecast.py --pillar ${{ matrix.pillar }} --replace
-
       - name: Summary
         if: steps.gate.outputs.run == 'true'
         run: |
@@ -109,3 +99,40 @@ jobs:
           print("|" + "---|" * len(rows))
           print("| " + " | ".join(str(v) for v in rows.values()) + " |")
           PY
+
+  synthesize:
+    needs: analyse
+    if: ${{ !cancelled() }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 75
+    defaults:
+      run:
+        working-directory: pipeline
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+          cache-dependency-path: pipeline/requirements.txt
+      - run: pip install -r requirements.txt
+
+      # Rebuilds the tree's signals, trends, findings and risks only when new
+      # evidence arrived since the last synthesis. Issued reports are unaffected:
+      # their citations were frozen when they were written (migration 034).
+      - name: Synthesize the EW tree
+        env:
+          AZURE_OPENAI_DEPLOYMENT: ${{ vars.SYNTH_DEPLOYMENT || 'gpt-5-mini' }}
+          SYNTH_EFFORT: medium
+        run: python synthesize.py --node EW --replace --if-changed --workers 6
+
+      # Strength depends on corroboration, which synthesis just changed.
+      - name: Rules (rescore)
+        run: python rules.py
+
+      - name: Forecast
+        run: |
+          for p in ELECTRONIC_WARFARE CYBERSECURITY AI PROCUREMENT; do
+            python forecast.py --pillar "$p" --replace || echo "::warning::forecast failed for $p"
+          done
+

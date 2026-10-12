@@ -502,6 +502,22 @@ def check_section(markdown: str, graph, allow_unsourced: bool = False,
     return uniq
 
 
+def failing_sentences(markdown: str, graph, allow_unsourced: bool = False,
+                      entail: bool = False) -> List[str]:
+    """The sentences behind check_section's sentence-level failures — a citation
+    that does not resolve, a fact with no citation, a quote that does not
+    support its sentence. Used to remove exactly those sentences from a draft
+    that kept failing, rather than withholding the whole section for one."""
+    sentences = sentences_of(markdown)
+    bad = [v.sentence for v in check_citations(sentences, graph)]
+    if not allow_unsourced:
+        bad += [v.sentence for v in check_unsourced(sentences)]
+    if entail:
+        violations, _ = check_entailment(sentences, graph)
+        bad += [v.sentence for v in violations]
+    return list(dict.fromkeys(bad))
+
+
 # --------------------------------------------------------------------------
 # entailment (the only model-assisted check)
 # --------------------------------------------------------------------------
@@ -608,11 +624,73 @@ def split_sections(body: str, template_sections) -> List[tuple]:
     return out or [(None, body)]
 
 
+def audit(sb, body, graph, tpl_sections, pillar, entail=True):
+    """Every report-level check. Returns (violations, exempt, n_entailment_checked)."""
+    sentences = sentences_of(body)
+    violations = []
+    violations += check_citations(sentences, graph)
+
+    # Unsourced is scored per section, so the epistemic sections are exempt here
+    # exactly as they are during generation.
+    exempt = 0
+    for key, chunk in split_sections(body, tpl_sections):
+        chunk_sentences = sentences_of(chunk)
+        if key in EPISTEMIC_SECTIONS:
+            exempt += len(check_unsourced(chunk_sentences))
+            continue
+        violations += check_unsourced(chunk_sentences)
+
+    violations += check_class_discipline(sentences, graph)
+    violations += check_gates(sb, sentences, pillar)
+
+    n_checked = 0
+    if entail:
+        found, n_checked = check_entailment(sentences, graph)
+        violations += found
+    return violations, exempt, n_checked
+
+
+def remove_sentences(body_md: str, sentences) -> str:
+    """Cut sentences out of markdown and tidy what they leave behind: doubled
+    spaces, a space before punctuation, emptied list items, blank paragraphs."""
+    out = body_md
+    for s in sentences:
+        out = out.replace(s, "")
+    lines = []
+    for line in out.splitlines():
+        line = re.sub(r"[ \t]{2,}", " ", line).rstrip()
+        if not re.match(r"\s+(?:[-*+]|\d+[.)])\s", line):
+            line = line.lstrip()           # a paragraph whose first sentence was cut
+        line = re.sub(r"\s+([.,;:])", r"\1", line)
+        if re.fullmatch(r"\s*(?:[-*+]|\d+[.)])\s*", line):
+            continue                       # a list item whose only sentence was cut
+        lines.append(line)
+    return re.sub(r"\n{3,}", "\n\n", "\n".join(lines)).strip()
+
+
+def drop_orphan_references(body_md: str) -> str:
+    """Remove reference lines none of whose ids the prose still cites."""
+    if "\n## References" not in body_md:
+        return body_md
+    prose, refs = body_md.split("\n## References", 1)
+    cited = set(CITATION.findall(prose)) | set(OBJECT_REF.findall(prose))
+    cited |= {i for m in re.findall(r"\[([^\]]+)\]", prose) for i in re.split(r"\s*[;,]\s*", m)}
+    keep = []
+    for line in refs.split("\n"):
+        m = re.match(r"\[([^\]]+)\]", line.strip())
+        if m and not (set(re.split(r"\s*[;,]\s*", m.group(1))) & cited):
+            continue
+        keep.append(line)
+    return prose + "\n## References" + "\n".join(keep)
+
+
 def main():
     ap = argparse.ArgumentParser(description="Verify a generated report against the graph")
     ap.add_argument("--run-id", help="pipeline_runs row to report progress into")
     ap.add_argument("--report", required=True, help="reports.id (uuid)")
     ap.add_argument("--json", help="write the violation list to this path")
+    ap.add_argument("--prune", action="store_true",
+                    help="cut blocking sentences from the stored report, log them, re-audit")
     ap.add_argument("--skip-entailment", action="store_true",
                     help="run only the deterministic checks (no model calls)")
     a = ap.parse_args()
@@ -641,26 +719,32 @@ def main():
             .eq("id", report.get("template_id")).execute().data
     tpl_sections = tpl[0]["sections"] if tpl else []
 
-    violations = []
-    violations += check_citations(sentences, graph)
+    violations, exempt, n_checked = audit(sb, body, graph, tpl_sections, pillar,
+                                          entail=not a.skip_entailment)
 
-    # Unsourced is scored per section, so the epistemic sections are exempt here
-    # exactly as they are during generation.
-    exempt = 0
-    for key, chunk in split_sections(body, tpl_sections):
-        chunk_sentences = sentences_of(chunk)
-        if key in EPISTEMIC_SECTIONS:
-            exempt += len(check_unsourced(chunk_sentences))
-            continue
-        violations += check_unsourced(chunk_sentences)
-
-    violations += check_class_discipline(sentences, graph)
-    violations += check_gates(sb, sentences, pillar)
-
-    n_checked = 0
-    if not a.skip_entailment:
-        entail, n_checked = check_entailment(sentences, graph)
-        violations += entail
+    # --prune: the run's last line of defence does what drafting does — cut the
+    # sentences that fail, record them, and audit again. A client's report is
+    # issued clean or not at all; it is never issued with a known bad sentence.
+    removed_all = []
+    for round_ in range(2):
+        cut = [v.sentence for v in violations if v.severity == "BLOCKER" and v.sentence in body]
+        if not a.prune or not cut:
+            break
+        body = drop_orphan_references(remove_sentences(body, cut))
+        removed_all += cut
+        print("pruned %d sentence(s) in round %d; re-auditing" % (len(cut), round_ + 1))
+        violations, exempt, n_checked = audit(sb, body, graph, tpl_sections, pillar,
+                                              entail=not a.skip_entailment)
+    if removed_all:
+        sb.table("reports").update({"body_md": body}).eq("id", a.report).execute()
+        sb.table("generation_ledger").insert({
+            "report_id": a.report, "section_key": "final_audit",
+            "section_title": "Final audit", "inputs_declared": [], "rows_passed": {},
+            "rows_withheld": {}, "scoped": False, "instructions": "",
+            "citations_emitted": [], "chars_sent": 0, "retries": 0, "withheld": False,
+            "failures": ["REMOVED (failed final audit): " + x for x in removed_all]}).execute()
+        import citations
+        citations.freeze(sb, a.report, body)
 
     by_check: Dict[str, int] = {}
     for v in violations:

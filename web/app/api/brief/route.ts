@@ -63,8 +63,21 @@ export async function POST(req: Request) {
     }
     const pillars = (Array.isArray(f.pillars) ? f.pillars : [])
       .map((p: string) => String(p).toUpperCase()).filter((p: string) => PILLARS.includes(p));
+    // A question makes a poor title. With no title given, ask for a short one;
+    // if the model is unavailable, fall back to the question's first words.
+    let title = str(f.title, 160);
+    if (!title && hasModel()) {
+      try {
+        const t = await complete([
+          { role: "system", content: "Write a report title of 4 to 8 words for this question. Title case. No quotes, no trailing punctuation, no date." },
+          { role: "user", content: goal },
+        ], { maxTokens: 40 });
+        title = t?.trim().replace(/^["'“]+|["'”.]+$/g, "").slice(0, 120) || null;
+      } catch { /* fall through */ }
+    }
+    title = title ?? (goal.length > 80 ? goal.slice(0, 80).replace(/\s\S*$/, "") + "…" : goal);
     const row = {
-      title: str(f.title, 160) ?? goal.slice(0, 120),
+      title,
       goal, decision, audience: str(f.audience),
       pillars: pillars.length ? pillars : ["ELECTRONIC_WARFARE"],
       horizon: ["H0_3", "H3_5", "H5_10", "H7_PLUS"].includes(f.horizon) ? f.horizon : null,

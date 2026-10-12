@@ -54,7 +54,10 @@ def update_run(run_id, stage=None, status=None, counts=None,
         patch["stage"] = stage
     if status:
         patch["status"] = status
-        if status == "RUNNING":
+        # A run starts once. Every stage reports RUNNING as it begins; only the
+        # run-level call (no stage) stamps the start, or the duration shrinks to
+        # the last stage's.
+        if status == "RUNNING" and not stage:
             patch["started_at"] = "now()"
         if status in ("DONE", "FAILED"):
             patch["finished_at"] = "now()"

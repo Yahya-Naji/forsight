@@ -32,7 +32,6 @@ from config import db
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 PYTHON = sys.executable
-DEFAULT_TEMPLATE = "TPL-FETC-23"
 
 PILLAR_LABEL = {"CYBERSECURITY": "Cybersecurity", "AI": "Artificial Intelligence",
                 "ELECTRONIC_WARFARE": "Electronic Warfare", "PROCUREMENT": "Procurement"}
@@ -74,23 +73,12 @@ def claim(sb, stale_minutes: int = 60):
 
 
 def execute(run) -> int:
-    cmd = [PYTHON, os.path.join(HERE, "generate.py"),
-           "--run-id", run["id"],
-           "--pillar", run["pillar"],
-           "--template", run.get("template_id") or DEFAULT_TEMPLATE,
-           "--workers", "3", "--retries", "4"]
-    # generate.py requires a title unless a brief supplies one, and a row queued
-    # from the console may carry none. Failing on argparse would surface as
-    # "exited 2" on screen, which tells the viewer nothing.
-    title = (run.get("title") or "").strip() or \
-        "%s Strategic Foresight Brief" % PILLAR_LABEL.get(run["pillar"], run["pillar"])
-    cmd += ["--title", title]
-
-    print("\n▶ run %s · %s · %s" % (run["id"][:8], run["pillar"],
-                                    run.get("template_id") or DEFAULT_TEMPLATE))
+    """The same path the GitHub Action takes: request.py, which reads the run
+    row (pillar, template, brief) itself."""
+    print("\n▶ run %s · %s" % (run["id"][:8], run["pillar"]))
     # Streamed, not captured: the terminal is half the demo — the retries and
     # refusals scrolling past are the part worth watching.
-    return subprocess.call(cmd, cwd=HERE)
+    return subprocess.call([PYTHON, os.path.join(HERE, "request.py"), "--run-id", run["id"]], cwd=HERE)
 
 
 HEARTBEAT = os.path.join(os.path.dirname(HERE), "out", ".runner-alive")
@@ -139,13 +127,12 @@ def main():
             print("✗ run %s failed: %s" % (run["id"][:8], exc_text))
         else:
             if code == 0:
-                # generate.py sets report_id and the final counts itself; only
-                # the terminal state is the runner's to write.
-                config.update_run(run["id"], status="DONE")
-                print("✓ run %s done" % run["id"][:8])
+                # verify.py wrote the terminal state (DONE, or FAILED when
+                # blockers survived pruning); the runner must not overwrite it.
+                print("✓ run %s finished" % run["id"][:8])
             else:
                 config.update_run(run["id"], status="FAILED",
-                                  error="generate.py exited %d" % code)
+                                  error="request.py exited %d" % code)
                 print("✗ run %s exited %d" % (run["id"][:8], code))
 
         if a.once:

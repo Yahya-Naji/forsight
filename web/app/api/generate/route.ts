@@ -12,7 +12,7 @@ export async function POST(req: Request) {
   const back = (params: string) =>
     NextResponse.redirect(new URL(`/generate?${params}`, req.url), 303);
 
-  let pillar = "CYBERSECURITY";
+  let pillar = "ELECTRONIC_WARFARE";
   let title: string | null = null;
   let briefId: string | null = null;
   let template = "TPL-BRIEF-01";
@@ -36,7 +36,7 @@ export async function POST(req: Request) {
 
   const { data, error } = await supabaseAdmin
     .from("pipeline_runs")
-    .insert({ pillar, title, template_id: template, status: "QUEUED" })
+    .insert({ pillar, title, template_id: template, status: "QUEUED", brief_id: briefId })
     .select("id")
     .single();
 
@@ -49,7 +49,13 @@ export async function POST(req: Request) {
   const token = process.env.GH_TOKEN;
   const repo = process.env.GH_REPO;
   const workflow = process.env.GH_WORKFLOW ?? "pipeline.yml";
-  if (token && repo) {
+  if (!token || !repo) {
+    // Nothing will be dispatched from this server. Say so on the row, so the
+    // screen explains the wait instead of showing "Queued" with no reason.
+    await supabaseAdmin.from("pipeline_runs")
+      .update({ error: "Waiting for a runner — this server has no GitHub dispatch configured. Start one with: python pipeline/runner.py" })
+      .eq("id", data.id);
+  } else {
     try {
       const res = await fetch(
         `https://api.github.com/repos/${repo}/actions/workflows/${workflow}/dispatches`,

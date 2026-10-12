@@ -54,7 +54,10 @@ export function splitSections(md: string): { title: string; sections: Section[] 
     if (cur) cur.md += line + "\n";
   }
   if (cur) sections.push(cur);
-  return { title, sections: sections.map(s => ({ ...s, md: s.md.trim() })) };
+  // "So what:" is the section's takeaway and is styled as a callout; a model
+  // sometimes runs it on at the end of a paragraph, so it is split out here.
+  const tidy = (md: string) => md.trim().replace(/([^\n])[ \t]+(So what:)/g, "$1\n\n$2");
+  return { title, sections: sections.map(s => ({ ...s, md: tidy(s.md) })) };
 }
 
 export function citedIds(md: string): string[] {
@@ -71,7 +74,23 @@ export async function loadReport(id: string): Promise<LoadedReport | null> {
   // References are rebuilt from the resolved rows, so the body's own list is
   // dropped from the reading view (the Markdown download keeps it verbatim).
   const prose = sections.filter(s => s.key !== "references");
-  const ids = citedIds(prose.map(s => s.md).join("\n"));
+  const all = citedIds(prose.map(s => s.md).join("\n"));
+
+  // Frozen at issue (migration 034): what each id said when the report was
+  // written. Only ids with no frozen row — reports older than the table — are
+  // resolved against the live graph, which may since have been rebuilt.
+  const { data: frozen } = await supabase.from("report_citations")
+    .select("cited_id,kind,text,quote,class,publisher,tier,url,doc_title,published,strength,status")
+    .eq("report_id", id);
+  const cited: Record<string, Cited> = {};
+  for (const f of (frozen ?? []) as any[]) {
+    cited[f.cited_id] = {
+      id: f.cited_id, kind: f.kind, text: f.text ?? "", quote: f.quote, cls: f.class,
+      publisher: f.publisher, tier: f.tier, url: f.url, docTitle: f.doc_title,
+      published: f.published, strength: f.strength, status: f.status,
+    };
+  }
+  const ids = all.filter(i => !cited[i]);
   const by = (p: string) => ids.filter(i => i.startsWith(p + "-"));
 
   const ev = by("EV"), fi = by("F"), sg = by("SIG"), rk = by("R"), tr = by("TR"), vg = by("VG"), fc = by("FC");
@@ -96,7 +115,6 @@ export async function loadReport(id: string): Promise<LoadedReport | null> {
     : { data: [] as any[] };
   const regOf = new Map((regs ?? []).map((g: any) => [g.id, g]));
 
-  const cited: Record<string, Cited> = {};
   for (const e of (evRes.data ?? []) as any[]) {
     const d = docOf.get(e.id), g = d ? regOf.get(d.registry_id) : null;
     cited[e.id] = {

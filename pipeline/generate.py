@@ -21,6 +21,7 @@ import os
 import re
 from concurrent import futures
 
+import citations
 import labels
 import llm
 import verify
@@ -687,6 +688,9 @@ def embed_figures(sb, markdown: str, pillars):
     return "\n\n".join(out), rendered
 
 
+remove_sentences = verify.remove_sentences
+
+
 def build_references(sb, pillar, cited=None):
     """One entry per DOCUMENT, listing every evidence id drawn from it.
 
@@ -806,6 +810,33 @@ def main():
                     "log": ["  ✗ %s: drafting failed — %s"
                             % (job["sec"]["key"], str(exc)[:110])]}
 
+    def section_failures(body_md, sec, data):
+        return (verify.check_section(body_md, graph,
+                                     allow_unsourced=sec["key"] in EPISTEMIC_SECTIONS,
+                                     entail=not a.no_entail)
+                + opener_failures(body_md, sec["key"])
+                + density_failures(body_md, sec)
+                + structure_failures(body_md, sec, data))
+
+    def prune_failing(body_md, sec, data):
+        """(pruned body, removed sentences), or None when pruning cannot save it."""
+        try:
+            bad = verify.failing_sentences(body_md, graph,
+                                           allow_unsourced=sec["key"] in EPISTEMIC_SECTIONS,
+                                           entail=not a.no_entail)
+        except Exception:
+            return None
+        before = len(verify.sentences_of(body_md))
+        if not bad or any(b not in body_md for b in bad):
+            return None
+        out = remove_sentences(body_md, bad)
+        kept = len(verify.sentences_of(out))
+        if kept < max(3, round(0.6 * before)):
+            return None                    # too little left to stand as a section
+        if section_failures(out, sec, data):
+            return None
+        return out, bad
+
     def _draft_section(job):
         sec, data = job["sec"], job["data"]
         if job["off_topic"]:
@@ -837,13 +868,7 @@ def main():
                 attempt += 1
                 log.append("  ! %s: empty draft, retry %d/%d" % (sec["key"], attempt, max_retries))
                 continue
-            failures = (verify.check_section(
-                            body_md, graph,
-                            allow_unsourced=sec["key"] in EPISTEMIC_SECTIONS,
-                            entail=not a.no_entail)
-                        + opener_failures(body_md, sec["key"])
-                        + density_failures(body_md, sec)
-                        + structure_failures(body_md, sec, data))
+            failures = section_failures(body_md, sec, data)
             notes = figure_notes(body_md, data)
             if not failures:
                 break
@@ -854,7 +879,21 @@ def main():
                 for f in failures[:3]:
                     log.append("      %s" % f[:110])
 
-        result = {"body": body_md, "failures": failures, "attempt": attempt}
+        pruned = []
+        if failures and body_md.strip():
+            # Retries exhausted. Before withholding the whole section, remove the
+            # sentences that failed and re-check what remains: one unsupported
+            # sentence should cost that sentence, not the section. The removals
+            # are named in the ledger; section-level failures (structure,
+            # density, openers) still withhold.
+            out = prune_failing(body_md, sec, data)
+            if out:
+                body_md, pruned = out
+                failures = []
+                log.append("  ✂ %s: kept the section after removing %d failing sentence(s)"
+                           % (sec["key"], len(pruned)))
+
+        result = {"body": body_md, "failures": failures, "attempt": attempt, "pruned": pruned}
         if not failures:
             # Only passed drafts are cached. Caching a failed one would skip the
             # retries that were supposed to fix it — and a dropped connection
@@ -887,7 +926,14 @@ def main():
             print("      note: %s" % note[:110])
 
         withheld_section = bool(failures)
-        if withheld_section:
+        if withheld_section and job["off_topic"]:
+            # Not a verification failure: the graph holds nothing on this
+            # brief's subject for the section's inputs. Say that, not "failed".
+            body_md = ("_Not written: the evidence graph does not yet hold %s on this "
+                       "brief's subject. This section is left empty rather than written "
+                       "from unrelated material._" % " or ".join(job["off_topic"]))
+            print(f"  ⊘ {sec['key']}: not written — no on-topic {', '.join(job['off_topic'])}")
+        elif withheld_section:
             openers = verify.unmatched_openers(verify.sentences_of(body_md))
             # Better a visible hole than a plausible paragraph on a citation
             # that does not exist.
@@ -904,14 +950,19 @@ def main():
         ledger.update({"key": sec["key"], "title": sec["title"],
                        "inputs": sec["inputs"], "instructions": sec["instructions"],
                        "chars": len(payload), "retries": attempt,
-                       "section_withheld": withheld_section, "failures": failures,
+                       "section_withheld": withheld_section,
+                       # Sentences cut by verification are part of the record:
+                       # a reader can see what the section would have claimed.
+                       "failures": failures + ["REMOVED (failed verification): " + x
+                                               for x in res.get("pruned") or []],
                        "citations": sorted(set(ANY_EV.findall(body_md)))})
         ledgers.append(ledger)
         flag = "WITHHELD" if withheld_section else ("scoped" if ledger["scoped"] else "UNSCOPED")
         if ledger["withheld"]:
             flag += " −%d" % sum(ledger["withheld"].values())
         print(f"drafted: {sec['title']:<38} {ledger['passed']} {flag}"
-              + (f" (retries {attempt})" if attempt else ""))
+              + (f" (retries {attempt})" if attempt else "")
+              + (f" (removed {len(res['pruned'])} sentence(s))" if res.get("pruned") else ""))
 
     body = "\n\n".join(parts)
     body, figs_rendered = embed_figures(sb, body, pillars)
@@ -925,6 +976,8 @@ def main():
         "brief_id": brief["id"] if brief else None}).execute().data[0]
     if brief:
         sb.table("report_briefs").update({"status": "USED"}).eq("id", brief["id"]).execute()
+    # What each citation said today, kept with the report (migration 034).
+    frozen = citations.freeze(sb, rep["id"], body)
 
     for led in ledgers:
         sb.table("generation_ledger").insert({
@@ -943,7 +996,7 @@ def main():
                       counts={"generate": len([l for l in ledgers
                                                if not l.get("section_withheld")])})
     print(f"\nreport {rep['id']} saved (status={status}, {len(body)} chars, "
-          f"{len(ledgers)} ledger rows)")
+          f"{len(ledgers)} ledger rows, {frozen} citations frozen)")
 
 
 if __name__ == "__main__":

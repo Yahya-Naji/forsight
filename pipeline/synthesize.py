@@ -697,6 +697,9 @@ def main():
     ap.add_argument("--dry-run", action="store_true",
                     help="call the model and run admission, print the outcome, write nothing")
     ap.add_argument("--workers", type=int, default=4, help="parallel model calls in --node mode")
+    ap.add_argument("--if-changed", action="store_true",
+                    help="--node only: do nothing unless evidence arrived after the newest "
+                         "signal drawn from this node (the daily job's guard)")
     a = ap.parse_args()
     run_id = None if a.dry_run else a.run_id
     config.update_run(run_id, stage="synthesize", status="RUNNING")
@@ -729,11 +732,27 @@ def main():
         topics = {t["id"]: t for t in sb.table("topics").select("id,name,pillar,node_id")
                   .in_("id", topic_ids).execute().data}
         rows = _with_publishers(rules._all(
-            lambda: sb.table("evidence").select("id,claim,class,confidence,env_layer,steep,topic_id")
+            lambda: sb.table("evidence").select("id,claim,class,confidence,env_layer,steep,topic_id,created_at")
             .in_("topic_id", topic_ids).is_("archived_at", "null").order("id")), sources)
         by_topic = defaultdict(list)
         for r in rows:
             by_topic[r["topic_id"]].append(r)
+
+        if a.if_changed:
+            newest_evidence = max((r["created_at"] for r in rows), default=None)
+            ev_ids = sorted(r["id"] for r in rows)
+            sig_ids = sorted({x["signal_id"] for c in _chunks(ev_ids) for x in
+                              sb.table("signal_evidence").select("signal_id").in_("evidence_id", c)
+                              .execute().data})
+            newest_signal = max((x["created_at"] for c in _chunks(sig_ids) for x in
+                                 sb.table("signals").select("created_at").in_("id", c)
+                                 .execute().data), default=None)
+            if newest_signal and newest_evidence and newest_evidence <= newest_signal:
+                print("Node %s: no evidence newer than its last synthesis (%s) — nothing to do."
+                      % (a.node, newest_signal[:16]))
+                return
+            print("Node %s: evidence up to %s, last synthesis %s — rebuilding."
+                  % (a.node, (newest_evidence or "")[:16], (newest_signal or "never")[:16]))
         work = [t for t in sorted(topic_ids) if len(by_topic[t]) >= MIN_EVIDENCE_PER_SIGNAL]
         skipped = sorted(set(topic_ids) - set(work))
         print("Synthesising node %s: %d topics, %d evidence rows%s" % (a.node, len(topic_ids), len(rows), note))

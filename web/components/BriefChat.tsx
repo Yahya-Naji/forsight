@@ -1,5 +1,6 @@
 "use client";
 import { useEffect, useRef, useState } from "react";
+import { useRouter } from "next/navigation";
 import { PILLAR_LABEL, label } from "./chips";
 import BriefForm, { type BriefFormValue } from "./BriefForm";
 
@@ -27,6 +28,7 @@ export default function BriefChat() {
   const [mode, setMode] = useState<"chat" | "form">("form");
   const [formError, setFormError] = useState<string | null>(null);
   const bottom = useRef<HTMLDivElement>(null);
+  const router = useRouter();
 
   useEffect(() => { bottom.current?.scrollIntoView({ behavior: "smooth" }); }, [turns, busy, ready]);
 
@@ -72,7 +74,10 @@ export default function BriefChat() {
         title: brief?.title ?? "Strategic brief",
       });
       const r = await fetch("/api/generate", { method: "POST", body });
-      setQueued(r.url.includes("run=") ? new URL(r.url).searchParams.get("run") : "queued");
+      const id = r.url.includes("run=") ? new URL(r.url).searchParams.get("run") : null;
+      setQueued(id ?? "queued");
+      // Show this run's progress below; the page polls until it finishes.
+      if (id) router.replace(`/generate?run=${id}`, { scroll: false });
     } finally { setBusy(false); }
   }
 
@@ -208,8 +213,8 @@ export default function BriefChat() {
           <div className="card" style={{ padding: 18, borderLeft: "3px solid var(--accent)" }}>
             <div className="section-title" style={{ fontSize: 14, marginBottom: 6 }}>Queued</div>
             <p style={{ fontSize: 12.5, color: "var(--muted)", lineHeight: 1.55 }}>
-              The pipeline picks this up from the repo or the scheduled action. Progress appears
-              on this page as each stage reports in — no stage is marked until it actually runs.
+              Drafting and auditing usually take three to six minutes. Progress appears below as
+              each stage reports in — no stage is marked until it actually runs.
             </p>
           </div>
         )}
