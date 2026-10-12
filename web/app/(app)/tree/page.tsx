@@ -1,5 +1,4 @@
 import { supabase } from "@/lib/supabase";
-import { Kicker } from "@/components/ui/section";
 import EwTree, { type TreeData, type TreeTopic } from "@/components/EwTree";
 
 export const revalidate = 0;
@@ -65,14 +64,11 @@ export default async function TreePage() {
   const data: TreeData = { nodes: nodesRes.data ?? [], topics };
 
   return (
-    <div className="flex flex-col gap-4">
-      <div>
-        <Kicker>Electronic warfare · structure</Kicker>
-        <h1 className="display mt-2 text-[32px] font-semibold tracking-tight">The EW tree</h1>
-        <p className="mt-1 max-w-[70ch] text-base text-muted">
-          Electronic Warfare at the centre, its eight branches around it, and each branch&apos;s manual
-          functions and topics on the outer ring. Select a topic to see the functions it reaches in
-          other branches, and the evidence behind it.
+    <div className="flex flex-col gap-3">
+      <div className="flex flex-wrap items-baseline justify-between gap-x-6 gap-y-1">
+        <h1 className="display text-[26px] font-semibold tracking-tight">The EW tree</h1>
+        <p className="text-sm text-muted">
+          EW at the centre · eight sub-pillars · functions and topics on the outer ring. Select a topic to trace it.
         </p>
       </div>
       <EwTree data={data} />

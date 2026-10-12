@@ -4,7 +4,6 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
-import { supabase } from "@/lib/supabase";
 
 // Navigation follows the pipeline, not the database: a reader moves from where
 // evidence comes from, through what it became, to what was written and how it
@@ -36,16 +35,11 @@ const LEGACY: Record<string, string> = {
 };
 
 type Topic = { id: string; name: string; node_id: string | null };
+export type PillarTreeData = { branches: { id: string; name: string }[]; topics: Topic[] };
 
-function PillarTree({ path }: { path: string }) {
-  const [branches, setBranches] = React.useState(SUB_PILLARS);
-  const [topics, setTopics] = React.useState<Topic[]>([]);
-  React.useEffect(() => {
-    supabase.from("nodes").select("id,name,sort").eq("kind", "branch").order("sort")
-      .then(({ data }) => { if (data?.length) setBranches(data); });
-    supabase.from("topics").select("id,name,node_id").is("retired_at", null).order("id")
-      .then(({ data }) => setTopics(data ?? []));
-  }, []);
+function PillarTree({ path, tree }: { path: string; tree?: PillarTreeData }) {
+  const branches = tree?.branches.length ? tree.branches : SUB_PILLARS;
+  const topics = tree?.topics ?? [];
   const seg = decodeURIComponent(path.split("/")[2] ?? "").toUpperCase();
   const current = LEGACY[seg] ?? seg;
   const link = (on: boolean) => cn("block truncate py-[4px] transition-colors hover:text-ink",
@@ -74,7 +68,7 @@ function PillarTree({ path }: { path: string }) {
   );
 }
 
-export default function Sidebar({ onAsk }: { onAsk?: () => void }) {
+export default function Sidebar({ onAsk, tree }: { onAsk?: () => void; tree?: PillarTreeData }) {
   const path = usePathname();
   const active = (href: string, match?: string) =>
     match ? path.startsWith(match) : path === href;
@@ -99,7 +93,7 @@ export default function Sidebar({ onAsk }: { onAsk?: () => void }) {
               {item.label}
             </Link>
 
-            {(item as any).children && <PillarTree path={path} />}
+            {(item as any).children && <PillarTree path={path} tree={tree} />}
           </div>
         ))}
       </nav>

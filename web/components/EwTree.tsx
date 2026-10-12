@@ -45,6 +45,18 @@ export default function EwTree({ data }: { data: TreeData }) {
     if (!window.matchMedia("(prefers-reduced-motion: reduce)").matches) setPlay(true);
   }, []);
   const reduce = !play;
+  const [showFunctions, setShowFunctions] = React.useState(true);
+  const frame = React.useRef<HTMLDivElement>(null);
+  const [full, setFull] = React.useState(false);
+  React.useEffect(() => {
+    const on = () => setFull(document.fullscreenElement === frame.current);
+    document.addEventListener("fullscreenchange", on);
+    return () => document.removeEventListener("fullscreenchange", on);
+  }, []);
+  const toggleFull = () => {
+    if (document.fullscreenElement) document.exitFullscreen();
+    else frame.current?.requestFullscreen?.();
+  };
   const [hover, setHover] = React.useState<string | null>(null);
   const [selected, setSelected] = React.useState<string | null>(null);
 
@@ -54,7 +66,7 @@ export default function EwTree({ data }: { data: TreeData }) {
     const groups = branches.map(b => [
       ...data.topics.filter(t => t.nodeId === b.id).sort((x, y) => y.evidence - x.evidence)
         .map(t => ({ kind: "topic" as const, id: t.id, branch: b.id, topic: t })),
-      ...data.nodes.filter(n => n.parent_id === b.id && n.kind === "function")
+      ...data.nodes.filter(n => showFunctions && n.parent_id === b.id && n.kind === "function")
         .map(n => ({ kind: "function" as const, id: n.id, branch: b.id, name: n.name })),
     ]);
     const slots = groups.reduce((n, g) => n + g.length, 0) + branches.length;   // one empty slot between branches
@@ -70,7 +82,7 @@ export default function EwTree({ data }: { data: TreeData }) {
     });
     const nameOf = new Map(data.nodes.map(n => [n.id, n.name]));
     return { branches, leaves, branchAngle, leafById: new Map(leaves.map(l => [l.id, l])), nameOf };
-  }, [data]);
+  }, [data, showFunctions]);
 
   const focus = hover ?? selected;
   const focusLeaf = focus ? leafById.get(focus) : undefined;
@@ -80,12 +92,15 @@ export default function EwTree({ data }: { data: TreeData }) {
   const cross = React.useMemo(() => {
     if (!focus) return [] as [Leaf, Leaf][];
     const f = leafById.get(focus);
+    if (f?.kind === "topic" && !showFunctions)
+      return leaves.filter(l => l.kind === "topic" && l.id !== f.id && l.topic.functions.some(fn => f.topic.functions.includes(fn)))
+        .map(l => [f, l] as [Leaf, Leaf]);
     if (f?.kind === "topic")
       return f.topic.functions.map(id => leafById.get(id)).filter(Boolean).map(l => [f, l!] as [Leaf, Leaf]);
     if (f?.kind === "function")
       return leaves.filter(l => l.kind === "topic" && l.topic.functions.includes(f.id)).map(l => [l, f] as [Leaf, Leaf]);
     return [];
-  }, [focus, leafById, leaves]);
+  }, [focus, leafById, leaves, showFunctions]);
   const crossIds = new Set(cross.flat().map(l => l.id));
   const lit = (leaf: Leaf) => !focus || leaf.id === focus || crossIds.has(leaf.id) || leaf.branch === focusBranch;
 
@@ -109,9 +124,24 @@ export default function EwTree({ data }: { data: TreeData }) {
   });
 
   return (
-    <div className="grid grid-cols-1 gap-5 xl:grid-cols-[minmax(0,1fr)_340px]">
-      <div className="rounded-[20px] border border-line bg-card p-2">
-        <svg key={play ? "animated" : "static"} viewBox={`${-SIZE / 2} ${-SIZE / 2} ${SIZE} ${SIZE}`} className="h-auto w-full select-none"
+    <div ref={frame} className={full ? "relative h-screen w-screen bg-paper" : "grid grid-cols-1 gap-5 xl:grid-cols-[minmax(0,1fr)_340px]"}>
+      <div className={`relative flex flex-col ${full ? "h-full" : "rounded-[20px] border border-line bg-card"}`}>
+        <div className="flex items-center justify-between gap-3 px-4 pt-3">
+          <div className="flex rounded-full bg-line-soft p-1 text-xs font-semibold">
+            {[["Topics + functions", true], ["Topics only", false]].map(([label, v]) => (
+              <button key={label as string} onClick={() => setShowFunctions(v as boolean)}
+                      className={`rounded-full px-3 py-1.5 transition ${showFunctions === v ? "bg-card text-ink shadow-sm" : "text-muted hover:text-ink"}`}>
+                {label as string}
+              </button>))}
+          </div>
+          <button onClick={toggleFull}
+                  className="rounded-full border border-line bg-card px-3.5 py-1.5 text-xs font-semibold text-ink-2 transition hover:border-accent/40 hover:text-ink active:scale-[.98]">
+            {full ? "Exit full screen" : "Full screen"}
+          </button>
+        </div>
+        <svg key={(play ? "animated" : "static") + String(showFunctions)} viewBox={`${-SIZE / 2} ${-SIZE / 2} ${SIZE} ${SIZE}`}
+             preserveAspectRatio="xMidYMid meet"
+             className={`mx-auto w-full select-none ${full ? "h-[calc(100vh-56px)]" : "h-[calc(100vh-170px)] min-h-[520px]"}`}
              role="img" aria-label="Radial tree of electronic warfare branches, functions and topics">
           {/* root → branch */}
           {branches.map((b, i) => {
@@ -180,7 +210,7 @@ export default function EwTree({ data }: { data: TreeData }) {
         </svg>
       </div>
 
-      <aside className="flex flex-col gap-4">
+      <aside className={full ? "absolute right-5 top-16 flex max-h-[calc(100vh-90px)] w-[340px] flex-col gap-4 overflow-y-auto" : "flex flex-col gap-4"}>
         <div className="rounded-[20px] border border-line bg-card p-5">
           {sel?.kind === "topic" ? <TopicPanel t={sel.topic} nameOf={nameOf} branchOf={(id) => leafById.get(id)?.branch} />
             : sel?.kind === "function" ? (
