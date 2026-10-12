@@ -44,6 +44,8 @@ ABSENT_NOTE = """
 ABSENT INPUTS: the evidence graph holds no {inputs} on this brief's subject.
 Write the section from the inputs you were given. Say in one sentence that no
 {inputs} on this subject exist yet; do not invent, imply or estimate them.
+Leave out any table or list the instructions ask for over the absent inputs —
+an empty table of dashes is not an answer.
 """
 
 SECTION_PROMPT = """You draft ONE section of a strategic foresight brief for the

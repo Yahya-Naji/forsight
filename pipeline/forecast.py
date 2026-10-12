@@ -20,6 +20,7 @@ Usage: python forecast.py --pillar CYBERSECURITY
 from __future__ import annotations
 
 import argparse
+import os
 import re
 from typing import Dict, List, Optional
 
@@ -45,6 +46,7 @@ PLACEHOLDER = re.compile(
     r"|\bXX+\b|\bYYYY\b|\binsert\b)", re.I)
 
 MIN_SIGNALS_PER_FORECAST = 1
+EFFORT = os.environ.get("FORECAST_EFFORT", "medium")   # reasoning effort for the proposal call
 
 
 # --------------------------------------------------------------------------
@@ -94,7 +96,9 @@ HARD RULES
 - env_layer is UAE only if the underlying evidence is UAE-specific. Regional or
   global evidence projects to REGIONAL or GLOBAL — a regional trend is not a
   UAE forecast.{gate_note}
-- Prefer few, sharp forecasts over many vague ones. Six at most.
+- Propose four to six forecasts, each on a different part of the pillar (a
+  different branch, topic or capability) where the signals support one. Sharp
+  beats many: drop any you cannot anchor to signals or give a falsifier.
 
 GRAPH
 {graph}
@@ -198,12 +202,18 @@ def publishers_behind(sb, signal_ids: List[str], evidence_ids: List[str]) -> int
 
 
 # --------------------------------------------------------------------------
+_MINTER = None
+
+
 def _next_id(sb, pillar: str) -> str:
-    prefix = "FC-%s-" % PILLAR_CODE[pillar]
-    rows = sb.table("forecasts").select("id").like("id", prefix + "%").execute().data
-    used = [int(r["id"].rsplit("-", 1)[-1]) for r in rows
-            if r["id"].rsplit("-", 1)[-1].isdigit()]
-    return "%s%02d" % (prefix, (max(used) + 1) if used else 1)
+    """Above every FC id ever seen — live, cited in a report, or frozen with
+    one. Highest-plus-one over the live table reissued FC-EW-01 after every
+    --replace, so two reports could cite one id meaning two forecasts."""
+    global _MINTER
+    if _MINTER is None:
+        from synthesize import IdMinter
+        _MINTER = IdMinter(sb)
+    return _MINTER.next("FC-%s-" % PILLAR_CODE[pillar])
 
 
 def _gap(sb, pillar, text):
@@ -346,10 +356,9 @@ def main():
     if not graph["signals"]:
         print("No signals for %s — run synthesize.py before forecasting." % a.pillar)
         return
-    if a.replace:
-        n = len(sb.table("forecasts").select("id").eq("pillar", a.pillar).execute().data)
-        sb.table("forecasts").delete().eq("pillar", a.pillar).execute()
-        print("removed %d existing forecast(s)\n" % n)
+    global _MINTER
+    from synthesize import IdMinter
+    _MINTER = IdMinter(sb)                   # before deleting, so deleted ids stay retired
 
     gate = (sb.table("validation_gates").select("status")
             .eq("id", "VG-%s-01" % a.pillar[:2]).execute().data)
@@ -363,8 +372,15 @@ def main():
     result = llm.structured(
         PROMPT.format(pillar=labels.PILLAR[a.pillar], graph=render(graph),
                       gate_note=GATE_NOTE if uae_gate_open else ""),
-        ForecastSet, effort="high", max_output_tokens=16000)
+        ForecastSet, effort=EFFORT, max_output_tokens=32000)
     print("proposed %d forecast(s)\n" % len(result.forecasts))
+
+    # Only now, with new proposals in hand: a failed model call used to leave
+    # the pillar with no forecasts at all.
+    if a.replace:
+        n = len(sb.table("forecasts").select("id").eq("pillar", a.pillar).execute().data)
+        sb.table("forecasts").delete().eq("pillar", a.pillar).execute()
+        print("removed %d existing forecast(s)\n" % n)
 
     n = admit(sb, a.pillar, result.forecasts, uae_gate_open)
     print("\nAdmitted %d/%d forecast(s)." % (n, len(result.forecasts)))

@@ -270,7 +270,7 @@ def risk_score(evidence_ids, by_id):
 # --------------------------------------------------------------------------
 # ids are never reused
 # --------------------------------------------------------------------------
-CITED_ID = re.compile(r"\b((?:SIG|TR|F|R|CU)-[A-Z]{2}-)(\d+)\b")
+CITED_ID = re.compile(r"\b((?:SIG|TR|F|R|CU|FC)-[A-Z]{2}-)(\d+)\b")
 
 
 class IdMinter:
@@ -281,11 +281,14 @@ class IdMinter:
 
     def __init__(self, sb):
         self.top = defaultdict(int)
-        for table in ("signals", "trends", "findings", "risks", "uncertainties"):
+        for table in ("signals", "trends", "findings", "risks", "uncertainties", "forecasts"):
             for r in rules._all(lambda: sb.table(table).select("id")):
                 self._see(r["id"])
         for r in rules._all(lambda: sb.table("reports").select("body_md")):
             self._see(r.get("body_md") or "")
+        # Ids frozen with issued reports (migration 034) stay retired too.
+        for r in rules._all(lambda: sb.table("report_citations").select("cited_id")):
+            self._see(r["cited_id"])
 
     def _see(self, text):
         for prefix, n in CITED_ID.findall(text):
