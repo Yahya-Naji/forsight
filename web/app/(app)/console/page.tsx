@@ -49,11 +49,11 @@ export default async function Overview() {
       <Aurora className="px-[38px] pb-[26px] pt-[34px]">
         <div className="flex flex-wrap items-start justify-between gap-6">
           <div>
-            <Kicker className="text-[#93A7E8]">Strategic foresight · UAE defence</Kicker>
+            <Kicker className="text-[#A1A1A6]">Strategic foresight · UAE defence</Kicker>
             <h1 className="display mt-2.5 text-[40px] font-bold tracking-tight">
               Intelligence, with receipts.
             </h1>
-            <p className="mt-2 text-[14px] text-[#B8C4EE]">
+            <p className="mt-2 text-[14px] text-[#D2D2D7]">
               Every claim below traces to a source. Nothing here is generated from a prompt.
             </p>
           </div>

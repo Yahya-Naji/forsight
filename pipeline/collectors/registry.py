@@ -143,8 +143,9 @@ SOURCES = [
     ("SRC-T1-019", 1, "EUROCONTROL", "https://www.eurocontrol.int",
      "search", [EW], "GNSS radio-frequency interference monitoring and workshops"),
     ("SRC-T1-020", 1, "ICAO", "https://www.icao.int",
-     "search", [EW], "Middle East regional (MID) working papers on GNSS interference, "
-                     "including UAE submissions. Cloudflare: needs the stealth fetch."),
+     "search", [EW, CY], "Middle East regional (MID) working papers on GNSS interference, "
+                     "including UAE submissions, and Assembly papers on ADS-B data security. "
+                     "Some paths need the stealth fetch."),
     ("SRC-T1-021", 1, "UK Civil Aviation Authority", "https://www.caa.co.uk",
      "search", [EW], "Safety notices on GNSS interference"),
     ("SRC-T1-022", 1, "European Defence Agency", "https://eda.europa.eu",
@@ -188,6 +189,34 @@ SOURCES = [
      "search", [EW, PR], "UAE air-defence procurement after the 2022 strikes"),
     ("SRC-T4-032", 4, "Kuwait Times", "https://kuwaittimes.com",
      "search", [EW], "Gulf reporting (AFP) on the Houthi drone threat to the UAE"),
+
+    # Thin-branch seed (032): publishers of the documents added for spectrum
+    # operations, electronic protection, resilient PNT, cyber over RF, track
+    # integrity and EW test & evaluation.
+    ("SRC-T1-023", 1, "US Department of Homeland Security", "https://www.dhs.gov",
+     "search", [EW, PR], "S&T counter-UAS test and evaluation"),
+    ("SRC-T1-024", 1, "US Government Publishing Office", "https://www.govinfo.gov",
+     "search", [EW, PR], "Congressional hearing records, incl. HASC on EMS operations"),
+    ("SRC-T1-025", 1, "DoD DSIAC (DTIC)", "https://dsiac.dtic.mil",
+     "search", [EW], "DoD information analysis centre; assured PNT"),
+    ("SRC-T2-012", 2, "NATO CCDCOE", "https://ccdcoe.org",
+     "search", [CY, EW], "NATO-accredited cyber centre of excellence; RF-delivered cyber "
+                         "and UAV exploitation. Tier 2 like JAPCC, another NATO CoE."),
+    ("SRC-T2-013", 2, "Hudson Institute", "https://www.hudson.org",
+     "search", [EW], "EMS superiority and Russian EW analysis. Only hudson.org pages — "
+                     "its PDFs on generic S3 cannot be attributed."),
+    ("SRC-T2-014", 2, "National Academies (NASEM)", "https://www.nationalacademies.org",
+     "search", [EW, PR], "DoD test-range capability, incl. spectrum encroachment"),
+    ("SRC-T2-015", 2, "United Service Institution of India", "https://usiofindia.org",
+     "search", [CY, AI, EW], "USI Journal; cyber vulnerabilities of counter-drone systems"),
+    ("SRC-T2-016", 2, "Harvard Belfer Center", "https://www.belfercenter.org",
+     "search", [EW], "Alternative-PNT architecture for defence"),
+    ("SRC-T3-006", 3, "arXiv (preprint server)", "https://arxiv.org",
+     "search", [CY, EW, PR], "Technical preprints, not peer reviewed. Tier 3, and one "
+                             "registry row for every author group, so arXiv papers never "
+                             "corroborate each other as independent publishers."),
+    ("SRC-T4-033", 4, "EDR Magazine", "https://www.edrmagazine.eu",
+     "search", [EW, PR], "Defence trade press; EDGE X RANGE test facility"),
 
     # ---------------- AGGREGATOR — Lane B fallback only ------------------------
     ("SRC-API-001", 4, "GDELT DOC 2.0 (aggregator)", "https://api.gdeltproject.org/api/v2/doc/doc",

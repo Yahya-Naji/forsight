@@ -237,7 +237,7 @@ def load_nvd(sb, keywords=None, limit=10, days=120, dry_run=False) -> int:
     quote = ", ".join(sorted(unique.keys())[:20]) or "no records"
     evidence_id = _write_provenance(
         sb, NVD_REGISTRY_ID, NVD_URL, "NIST National Vulnerability Database (CVE 2.0 API)",
-        "EV-NVD-001", claim, quote, "CS-T02", dry_run)
+        "EV-NVD-001", claim, quote, "CS-T12", dry_run)
 
     count = 0
     for cve_id, (keyword, cve) in sorted(unique.items()):

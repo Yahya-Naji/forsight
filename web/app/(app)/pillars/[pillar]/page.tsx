@@ -125,7 +125,7 @@ export default async function Pillar({ params, searchParams }: {
               </div>
             </div>
           ))}
-          <div style={{ background: "#F8F9FD", border: "1px dashed #D5DCEF", borderRadius: "var(--radius)", padding: "14px 16px", fontSize: 12, color: "#7A8098", lineHeight: 1.5 }}>
+          <div style={{ background: "#F8F9FD", border: "1px dashed #D5DCEF", borderRadius: "var(--radius)", padding: "14px 16px", fontSize: 12, color: "#86868B", lineHeight: 1.5 }}>
             Strength is computed from independent publishers, never from row counts. A single-source signal stays weak until corroborated.
           </div>
         </div>

@@ -161,11 +161,11 @@ export default async function Engine({
       <section className="aurora" style={{ padding: "32px 36px 28px" }}>
         <div style={{ display: "flex", justifyContent: "space-between", gap: 26, flexWrap: "wrap", alignItems: "flex-start" }}>
           <div style={{ maxWidth: "60ch" }}>
-            <div className="kicker" style={{ color: "#93A7E8" }}>The engine · {PILLAR_LABEL[pillar] ?? pillar}</div>
+            <div className="kicker" style={{ color: "#A1A1A6" }}>The engine · {PILLAR_LABEL[pillar] ?? pillar}</div>
             <h1 className="display" style={{ fontWeight: 700, fontSize: 36, margin: "10px 0 0", letterSpacing: -0.5, lineHeight: 1.12 }}>
               A model drafts. The rules decide.
             </h1>
-            <div style={{ fontSize: 14, color: "#B8C4EE", marginTop: 10, lineHeight: 1.55 }}>
+            <div style={{ fontSize: 14, color: "#D2D2D7", marginTop: 10, lineHeight: 1.55 }}>
               This is the same engine that writes the briefs — not a diagram of it. Every
               number below is read live from the graph, and every refusal names the rule
               that made it.
@@ -180,7 +180,7 @@ export default async function Engine({
                      fontFamily: "inherit", fontSize: 13, padding: "9px 12px", borderRadius: 10,
                      border: "1px solid rgba(255,255,255,.18)", background: "rgba(255,255,255,.07)", color: "#fff",
                    }} />
-            <button className="pill-btn" type="submit" style={{ background: "#5B7CF0" }}>
+            <button className="pill-btn" type="submit" style={{ background: "#0071E3" }}>
               Run this engine
             </button>
             <div style={{ fontSize: 11, color: "#8493C8", lineHeight: 1.45 }}>

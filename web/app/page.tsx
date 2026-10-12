@@ -55,7 +55,7 @@ export default async function Landing() {
           <nav className="row" style={{ gap: 26, fontSize: 13.5 }}>
             <Link href="/reports" style={{ color: "#C6CFF2", textDecoration: "none" }}>Sample brief</Link>
             <Link href="/evidence" style={{ color: "#C6CFF2", textDecoration: "none" }}>Evidence</Link>
-            <Link href="/console" className="pill-btn" style={{ textDecoration: "none", padding: "9px 17px" }}>
+            <Link href="/overview" className="pill-btn" style={{ textDecoration: "none", padding: "9px 17px" }}>
               Open the console
             </Link>
           </nav>
@@ -76,7 +76,7 @@ export default async function Landing() {
             </p>
 
             <div className="row" style={{ gap: 14, marginTop: 26 }}>
-              <Link href="/console" className="pill-btn" style={{ textDecoration: "none" }}>Open the console</Link>
+              <Link href="/overview" className="pill-btn" style={{ textDecoration: "none" }}>Open the console</Link>
               <Link href="/reports" style={{ color: "#fff", textDecoration: "none", fontSize: 13.5, fontWeight: 600 }}>
                 Read the sample brief →
               </Link>

@@ -30,7 +30,7 @@ function Dot({ state = "idle" }: { state?: StageRow["state"] }) {
     <span aria-hidden className={cn(
       "relative z-[2] h-[13px] w-[13px] shrink-0 rounded-full",
       state === "idle"
-        ? "border-[1.5px] border-[#C9D0E4] bg-card"
+        ? "border-[1.5px] border-[#D1D1D6] bg-card"
         : "border-2 border-card shadow-[0_0_0_3px_rgba(255,255,255,.9)]",
       state === "failed" && "bg-[#FF7878]",
       state === "done" && "bg-[#4ADE80]",

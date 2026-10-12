@@ -72,7 +72,7 @@ export default async function Generate({ searchParams }: { searchParams?: { run?
                   width: 22, height: 22, borderRadius: 11, flexShrink: 0, display: "flex", alignItems: "center",
                   justifyContent: "center", fontSize: 12, fontWeight: 700,
                   background: stalled ? "#FF7878" : complete ? "#4ADE80" : active ? "#FFC96B" : "transparent",
-                  color: "#0A0F2E",
+                  color: "#000000",
                   border: complete || active || stalled ? "none" : "1.5px solid #5A6698",
                 }}>{stalled ? "!" : complete ? "✓" : active ? "•" : ""}</span>
                 <span style={{ fontSize: 14, fontWeight: 600, width: 160 }}>{name}</span>

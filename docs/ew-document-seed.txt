@@ -86,3 +86,61 @@ https://kuwaittimes.com/houthi-drones-pose-challenge-for-uae/  # T4 · Kuwait Ti
 #! https://breakingdefense.com/2026/03/uae-fights-off-outsized-share-of-iranian-attacks-pulls-back-on-sharing-interception-rates/  # T4 · Breaking Defense · UAE fights off outsized share of Iranian attacks (2026) · EW-T19 EW-T16
 #! https://edgegroupuae.com/share/print/news/983  # T4 · EDGE Group · GPS PROTECT anti-jamming MoD contract (2025) · EW-T14 PR-T11
 #! https://www.dawn.com/news/1981534  # T4 · Dawn (AFP) · GPS glitches in UAE put ships on land (2026) · EW-T14
+
+# ---- Thin branches (added 2026-10-11) ----
+# Spectrum operations, electronic protection, resilient PNT, cyber over RF,
+# track integrity and EW test & evaluation. Each URL fetched with a plain
+# client and its content checked on 2026-10-11. arXiv is Tier 3 (preprints).
+# Browser-only alternatives (GAO-22-106010, JP 3-85, AFDP 3-85, CJCSM 3320.01D,
+# NATO STO/DIANA/ACT/NCIA, DOT&E FY2024 T&E resources, MITRE PNT) need CAMOFOX_URL.
+
+# EW-T15 · spectrum operations
+https://www.hudson.org/national-security-defense/testimony-regaining-ems-superiority-through-new-technologies  # T2 · Hudson Institute · Regaining EMS Superiority Through New Technologies (2021) · EW-T15
+https://www.govinfo.gov/content/pkg/CHRG-117hhrg44411/pdf/CHRG-117hhrg44411.pdf  # T1 · US House Armed Services (GPO) · DoD EMS Operations: the invisible battlespace (2021) · EW-T15
+https://www.japcc.org/articles/future-command-and-control-of-electronic-warfare/  # T2 · JAPCC · Future Command and Control of EW (2019) · EW-T15
+https://www.everycrsreport.com/reports/IF11155.html  # T1 · CRS · Defense Primer: Military Use of the EMS (2022) · EW-T15
+https://assets.publishing.service.gov.uk/media/667d6471c7f64e23420900d6/ARCHIVE-JDN_1_18_Cyber_and_electromagnetic_activities.pdf  # T1 · UK MOD (DCDC) · JDN 1/18 Cyber and Electromagnetic Activities (2018) · EW-T15 CS-T10
+https://www.everycrsreport.com/files/2022-01-21_R46725_c310c14237b976901b34b7efbb95c5ddedfbb8b0.html  # T1 · CRS · JADC2: Background and Issues (2022) · EW-T15
+
+# EW-T12 · electronic protection
+https://www.japcc.org/essays/electronic-protective-measures/  # T2 · JAPCC · Electronic Protective Measures (2021) · EW-T12
+https://www.mitchellaerospacepower.org/app/uploads/2023/05/Scale_Scope_Speed_Survivability_-KillChain_-Policy_Paper_40-New.pdf  # T2 · Mitchell · Policy Paper 40: Winning the Kill Chain Competition (2023) · EW-T12
+https://www.mitchellaerospacepower.org/app/uploads/2021/01/a2dd91_2a1da65374434775b321619daf50a0a3.pdf  # T2 · Mitchell · Policy Paper 24: attritable UAVs (2020) · EW-T12
+https://static.rusi.org/airborne-electronic-warfare-in-nato.pdf  # T2 · RUSI · Airborne Electromagnetic Warfare in NATO (2025) · EW-T12
+https://www.hudson.org/national-security-defense/the-fall-and-rise-of-russian-electronic-warfare  # T2 · Hudson Institute · The Fall and Rise of Russian EW (2022) · EW-T12
+https://arxiv.org/pdf/2602.06061  # T3 · arXiv · UAV-Mounted Aerial Relays in Military Communications (2026) · EW-T12
+
+# EW-T14 / EP-PNT · resilient navigation and timing
+https://www.belfercenter.org/research-analysis/navigating-without-gps-cascading-alt-pnt-architecture-american-defense  # T2 · Belfer Center · Navigating Without GPS (2026) · EW-T14
+https://www.cnas.org/publications/reports/atomic-advantage  # T2 · CNAS · Atomic Advantage: quantum sensing for PNT (2025) · EW-T14
+https://dsiac.dtic.mil/wp-content/uploads/2021/06/TI-Response-Report_DSIAC_Assured-Positioning-Navigation-and-Timing-APNT_1162023-1.pdf  # T1 · DoD DSIAC · Assured PNT (2021) · EW-T14
+https://www.cisa.gov/sites/default/files/publications/report-on-pnt-backup-complementary-capabilities-to-gps_508.pdf  # T1 · DHS/CISA · PNT Backup and Complementary Capabilities to GPS (2020) · EW-T14
+https://www.gov.uk/government/news/landmark-government-investment-to-safeguard-the-essential-signals-we-all-rely-on  # T1 · UK Government · £155m eLoran investment (2025) · EW-T14
+https://arxiv.org/pdf/2205.13242  # T3 · arXiv · GNSS-Denied Visual Navigation for Autonomous UAVs (2022) · EW-T14
+
+# CS-T10 · cyber intrusion over RF
+https://www.rusi.org/explore-our-research/publications/commentary/time-crunch-cyberem-commands-challenges  # T2 · RUSI · The Time-Crunch for CyberEM Command (2025) · CS-T10
+https://www.ccdcoe.org/uploads/2020/12/8-Cyber-Capabilities-and-Multi-Domain-Operations-in-Future-High-Intensity-Warfare-in-2030_ebook.pdf  # T2 · NATO CCDCOE · Cyber Capabilities and MDO in 2030 (2020) · CS-T10
+https://ccdcoe.org/uploads/2018/10/Art-13-UAV-Exploitation-A-New-Domain-for-Cyber-Power.pdf  # T2 · NATO CCDCOE · UAV Exploitation: A New Domain for Cyber Power (2016) · CS-T10 CS-T13
+https://www.japcc.org/chapters/c-uas-defensive-counter-air-operations/  # T2 · JAPCC · C-UAS Defensive Counter-Air Operations (2021) · CS-T10
+https://defensescoop.com/2024/02/14/radio-frequency-enabled-cyberattacks-pentagon-assessment/  # T4 · DefenseScoop · DOT&E on RF-enabled cyberattacks (2024) · CS-T10 PR-T13
+
+# CS-T13 · integrity of fusion and C2 tracks
+https://www.icao.int/sites/default/files/Meetings/a42/Documents/WP/wp_479_en.pdf  # T1 · ICAO · A42 WP/479 ADS-B Data Security Strategy (2025) · CS-T13
+https://usiofindia.org/pdf/USI_Journal_Jan_March_2026_71_81.pdf  # T2 · USI of India · Cyber Vulnerabilities of AI-Enabled Counter-Drone Systems (2026) · CS-T13
+https://arxiv.org/pdf/2209.04028  # T3 · arXiv · Evaluating the Security of Aircraft Systems (2022) · CS-T13 CS-T10
+https://arxiv.org/pdf/1904.09969  # T3 · arXiv · Detecting ADS-B Spoofing Attacks with DNNs (2019) · CS-T13
+https://arxiv.org/html/2507.17875v1  # T3 · arXiv · Trust-Based Assured Sensor Fusion (2025) · CS-T13
+https://arxiv.org/pdf/2107.04910  # T3 · arXiv · Cyber-Security Challenges in Aviation (2021) · CS-T13
+
+# PR-T13 · test and evaluation
+https://www.nationalacademies.org/read/26181/chapter/2  # T2 · NASEM · DoD Range Capabilities: Testing for the Future Fight (2021) · PR-T13
+https://www.dhs.gov/science-and-technology/news/2024/02/27/feature-article-st-tests-cutting-edge-counter-drone-technology  # T1 · DHS S&T · Tests Cutting-Edge Counter-Drone Technology (2024) · PR-T13
+https://www.dhs.gov/science-and-technology/news/2024/10/24/feature-article-st-continues-counter-unmanned-aerial-system-technologies-testing  # T1 · DHS S&T · Continues C-UAS Technologies Testing (2024) · PR-T13
+https://www.dhs.gov/sites/default/files/2024-04/24_0422_st_Countering_Unmanned_Aircraft_Systems_April_2024.pdf  # T1 · DHS S&T · Countering UAS fact sheet (2024) · PR-T13
+https://www.gov.uk/government/news/nato-trials-dstl-standard-for-counter-drone-systems  # T1 · UK MOD / Dstl · NATO trials Dstl C-UAS standard (2022) · PR-T13 CS-T13
+https://www.everycrsreport.com/reports/IN12418.html  # T1 · CRS · FY2025 NDAA: Countering UAS (2025) · PR-T13
+https://arxiv.org/pdf/2405.04477  # T3 · arXiv · Test Method for C-UAS DTI Solutions (2024) · PR-T13
+https://www.airandspaceforces.com/f-15-ew-suite-effective-secrecy-test-range/  # T4 · Air & Space Forces · DOT&E on EPAWSS and EW test ranges (2025) · PR-T13
+https://www.defensenews.com/global/mideast-africa/2023/11/13/edge-group-touts-gulf-regions-first-multi-domain-military-test-island/  # T4 · Defense News · EDGE Gulf multidomain test island (2023) · PR-T13 — UAE layer
+https://www.edrmagazine.eu/edge-unveils-the-regions-first-multi-domain-test-range  # T4 · EDR Magazine · EDGE X RANGE multi-domain test range (2023) · PR-T13 — UAE layer

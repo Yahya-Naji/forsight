@@ -40,8 +40,8 @@ export function Aurora({ className, ...props }: React.HTMLAttributes<HTMLDivElem
       className={cn("rounded-[20px] bg-aurora text-white", className)}
       style={{
         backgroundImage:
-          "radial-gradient(900px 420px at 50% 130%,rgba(84,116,255,.55),rgba(84,116,255,0) 65%)," +
-          "radial-gradient(500px 260px at 82% 120%,rgba(128,196,255,.35),rgba(128,196,255,0) 60%)",
+          "radial-gradient(900px 420px at 50% 130%,rgba(255,255,255,.10),rgba(255,255,255,0) 65%)," +
+          "radial-gradient(500px 260px at 82% 120%,rgba(0,113,227,.22),rgba(0,113,227,0) 60%)",
       }}
       {...props}
     />

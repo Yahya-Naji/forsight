@@ -10,7 +10,8 @@ import { PILLAR_LABEL } from "@/components/chips";
 // scored. Ordering these by table name would put Evidence next to Engine and
 // hide the argument the console is making.
 const NAV = [
-  { href: "/console", label: "Overview" },
+  { href: "/overview", label: "Overview" },
+  { href: "/console", label: "System" },
   { href: "/pillars/CYBERSECURITY", label: "Pillars", match: "/pillars", children: true },
   { href: "/sources", label: "Sources" },
   { href: "/evidence", label: "Evidence" },
@@ -44,7 +45,7 @@ export default function Sidebar({ onAsk }: { onAsk?: () => void }) {
                 ? "bg-accent-wash font-semibold text-ink"
                 : "text-muted hover:bg-line-soft hover:text-ink")}>
               <span className={cn("h-[7px] w-[7px] rounded-full",
-                active(item.href, (item as any).match) ? "bg-accent" : "bg-[#C9D0E4]")} />
+                active(item.href, (item as any).match) ? "bg-accent" : "bg-[#D1D1D6]")} />
               {item.label}
             </Link>
 
@@ -53,7 +54,7 @@ export default function Sidebar({ onAsk }: { onAsk?: () => void }) {
                 {PILLARS.map(p => (
                   <Link key={p} href={`/pillars/${p}`} className={cn(
                     "px-2 py-[5px] transition-colors hover:text-ink",
-                    path === `/pillars/${p}` ? "font-semibold text-ink" : "text-[#7A8098]")}>
+                    path === `/pillars/${p}` ? "font-semibold text-ink" : "text-[#86868B]")}>
                     {PILLAR_LABEL[p]}
                   </Link>
                 ))}

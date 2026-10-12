@@ -61,7 +61,7 @@ export default function EvidenceDialog({ ev, onClose }:
               <div className="text-2xs font-bold uppercase tracking-wide text-faint">
                 The span it rests on
               </div>
-              <blockquote className="mt-1.5 border-l-2 border-[#C7D2F7] bg-paper px-3.5 py-2.5
+              <blockquote className="mt-1.5 border-l-2 border-[#B3D4F6] bg-paper px-3.5 py-2.5
                                      text-sm italic leading-relaxed text-muted">
                 &ldquo;{ev.quote_span}&rdquo;
               </blockquote>

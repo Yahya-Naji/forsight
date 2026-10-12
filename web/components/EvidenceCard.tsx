@@ -23,7 +23,7 @@ export default function EvidenceCard({ ev, compact }: { ev: Evidence; compact?: 
     <>
     <Card onClick={() => setOpen(true)} role="button" tabIndex={0}
           onKeyDown={e => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); setOpen(true); } }}
-          className={cn("cursor-pointer transition-colors hover:border-[#C7D2F7] hover:bg-[#FCFCFE]",
+          className={cn("cursor-pointer transition-colors hover:border-[#B3D4F6] hover:bg-[#FCFCFE]",
                         compact ? "px-[15px] py-[13px]" : "px-[18px] py-4")}>
       <p className={cn("font-semibold leading-snug", compact ? "text-base" : "text-[14.5px]")}>
         {ev.claim}

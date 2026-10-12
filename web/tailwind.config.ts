@@ -60,8 +60,8 @@ const config: Config = {
         sm: "calc(var(--radius) - 8px)",
       },
       fontFamily: {
-        sans: ["'Instrument Sans'", "system-ui", "sans-serif"],
-        display: ["'Space Grotesk'", "'Instrument Sans'", "sans-serif"],
+        sans: ["-apple-system", "BlinkMacSystemFont", "'SF Pro Text'", "Inter", "'Segoe UI'", "system-ui", "sans-serif"],
+        display: ["-apple-system", "BlinkMacSystemFont", "'SF Pro Display'", "Inter", "'Segoe UI'", "system-ui", "sans-serif"],
         mono: ["'JetBrains Mono'", "ui-monospace", "SFMono-Regular", "Menlo", "monospace"],
       },
       fontSize: {
