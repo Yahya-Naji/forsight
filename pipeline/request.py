@@ -94,10 +94,38 @@ def fulfil(run_id: str) -> int:
     return 0 if code in (0, 1) else code
 
 
+def claim_waiting(min_age_minutes: int = 3, max_age_minutes: int = 120):
+    """The oldest request nobody picked up: queued for at least `min_age`
+    minutes (a dispatched job has started by then, so the sweep never races it)
+    and not so old that the person asking has given up."""
+    from datetime import datetime, timedelta, timezone
+    sb = db()
+    now = datetime.now(timezone.utc)
+    rows = (sb.table("pipeline_runs").select("id")
+            .eq("status", "QUEUED")
+            .lt("requested_at", (now - timedelta(minutes=min_age_minutes)).isoformat())
+            .gt("requested_at", (now - timedelta(minutes=max_age_minutes)).isoformat())
+            .order("requested_at").limit(1).execute().data)
+    if not rows:
+        return None
+    # Conditional on still being QUEUED, so two sweeps cannot take one request.
+    got = (sb.table("pipeline_runs").update({"status": "RUNNING"})
+           .eq("id", rows[0]["id"]).eq("status", "QUEUED").execute().data)
+    return rows[0]["id"] if got else None
+
+
 def main():
     ap = argparse.ArgumentParser(description="Fulfil one queued report request")
-    ap.add_argument("--run-id", required=True)
+    g = ap.add_mutually_exclusive_group(required=True)
+    g.add_argument("--run-id")
+    g.add_argument("--next-waiting", action="store_true",
+                   help="claim the oldest request left waiting (the scheduled sweep)")
     a = ap.parse_args()
+    if a.next_waiting:
+        a.run_id = claim_waiting()
+        if not a.run_id:
+            print("no request waiting")
+            return
     try:
         sys.exit(fulfil(a.run_id))
     except Exception as exc:                                   # noqa: BLE001

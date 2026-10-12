@@ -36,6 +36,16 @@ INPUT_BUDGET = int(os.environ.get("GEN_INPUT_BUDGET", "260000"))   # chars of JS
 GEN_EFFORT = os.environ.get("GEN_EFFORT", "medium")                  # reasoning effort per section
 GEN_MAX_OUTPUT = int(os.environ.get("GEN_MAX_OUTPUT", "32000"))     # incl. reasoning tokens
 
+# Inputs a brief's focus terms filter (fetch_inputs.take).
+FILTERED_INPUTS = ("evidence", "signals", "findings", "risks", "forecasts", "uncertainties")
+
+ABSENT_NOTE = """
+
+ABSENT INPUTS: the evidence graph holds no {inputs} on this brief's subject.
+Write the section from the inputs you were given. Say in one sentence that no
+{inputs} on this subject exist yet; do not invent, imply or estimate them.
+"""
+
 SECTION_PROMPT = """You draft ONE section of a strategic foresight brief for the
 Tawazun Council (UAE). Write ONLY from the JSON data below — no outside
 knowledge, no remembered examples, no invented facts.
@@ -788,9 +798,18 @@ def main():
         base = SECTION_PROMPT.format(
             title=sec["title"], instructions=sec["instructions"], data=payload,
             brief_block=brief_block)
+        # A section is blocked only when NONE of its brief-filtered inputs has an
+        # on-topic row. When some do, it is written from those, and the writer is
+        # told which inputs are empty so it states the absence instead of filling
+        # it — 46 relevant signals must not be lost because no forecast matched.
+        off = ledger.get("off_topic") or []
+        filterable = [k for k in sec["inputs"] if k in FILTERED_INPUTS]
+        blocked = bool(off) and all(k in off or not data.get(k) for k in filterable)
+        if off and not blocked:
+            base += ABSENT_NOTE.format(inputs=" or ".join(off))
         jobs.append({"sec": sec, "data": data, "ledger": ledger,
                      "payload": payload, "base": base,
-                     "off_topic": ledger.get("off_topic") or []})
+                     "off_topic": off if blocked else []})
 
     # ---- phase 2: draft and verify, concurrently ---------------------------
     # Sections are independent — only the reference list depends on the others,
@@ -818,24 +837,39 @@ def main():
                 + density_failures(body_md, sec)
                 + structure_failures(body_md, sec, data))
 
-    def prune_failing(body_md, sec, data):
-        """(pruned body, removed sentences), or None when pruning cannot save it."""
-        try:
-            bad = verify.failing_sentences(body_md, graph,
-                                           allow_unsourced=sec["key"] in EPISTEMIC_SECTIONS,
-                                           entail=not a.no_entail)
-        except Exception:
-            return None
+    def prune_failing(body_md, sec, data, log):
+        """(pruned body, removed sentences), or None when pruning cannot save it.
+        Two rounds: the entailment check is a model call, and a re-check can
+        flag a sentence the first pass let through."""
         before = len(verify.sentences_of(body_md))
-        if not bad or any(b not in body_md for b in bad):
-            return None
-        out = remove_sentences(body_md, bad)
-        kept = len(verify.sentences_of(out))
-        if kept < max(3, round(0.6 * before)):
-            return None                    # too little left to stand as a section
-        if section_failures(out, sec, data):
-            return None
-        return out, bad
+        out, removed = body_md, []
+        for _ in range(2):
+            try:
+                bad = verify.failing_sentences(out, graph,
+                                               allow_unsourced=sec["key"] in EPISTEMIC_SECTIONS,
+                                               entail=not a.no_entail)
+            except Exception as exc:
+                log.append("      prune: check unavailable (%s)" % str(exc)[:60])
+                return None
+            missing = [b for b in bad if b not in out]
+            if missing:
+                log.append("      prune: a failing sentence is not verbatim in the draft")
+                return None
+            out = remove_sentences(out, bad)
+            removed += bad
+            if len(verify.sentences_of(out)) < max(3, round(0.6 * before)):
+                log.append("      prune: too little would remain (%d of %d sentences)"
+                           % (len(verify.sentences_of(out)), before))
+                return None
+            left = section_failures(out, sec, data)
+            if not left:
+                return (out, removed) if removed else None
+            if not all(f.startswith(("This sentence states", "The citation does not", "Cites ", "cites "))
+                       or "does not exist" in f for f in left):
+                log.append("      prune: section-level failure remains — %s" % left[0][:90])
+                return None
+        log.append("      prune: failures remained after two rounds")
+        return None
 
     def _draft_section(job):
         sec, data = job["sec"], job["data"]
@@ -886,7 +920,7 @@ def main():
             # sentence should cost that sentence, not the section. The removals
             # are named in the ledger; section-level failures (structure,
             # density, openers) still withhold.
-            out = prune_failing(body_md, sec, data)
+            out = prune_failing(body_md, sec, data, log)
             if out:
                 body_md, pruned = out
                 failures = []

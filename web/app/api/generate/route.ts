@@ -53,7 +53,7 @@ export async function POST(req: Request) {
     // Nothing will be dispatched from this server. Say so on the row, so the
     // screen explains the wait instead of showing "Queued" with no reason.
     await supabaseAdmin.from("pipeline_runs")
-      .update({ error: "Waiting for a runner — this server has no GitHub dispatch configured. Start one with: python pipeline/runner.py" })
+      .update({ error: "Queued — no direct dispatch from this server, so the scheduled run picks it up within ten minutes. Locally: python pipeline/runner.py" })
       .eq("id", data.id);
   } else {
     try {
@@ -76,7 +76,7 @@ export async function POST(req: Request) {
       if (!res.ok) {
         const detail = (await res.text()).slice(0, 200);
         await supabaseAdmin.from("pipeline_runs")
-          .update({ error: `dispatch failed (${res.status}): ${detail}` })
+          .update({ error: `Direct dispatch failed (${res.status}); the scheduled run picks this up within ten minutes. ${detail}` })
           .eq("id", data.id);
       }
     } catch (e) {

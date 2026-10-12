@@ -4,6 +4,10 @@ name: pipeline
 # and dispatches this workflow with that row's id; each stage reports progress
 # back into it, so /generate reflects what actually ran rather than a guess.
 on:
+  # Safety net: a request the console could not dispatch (or whose dispatch was
+  # lost) is picked up by this sweep within ten minutes. Free on a public repo.
+  schedule:
+    - cron: "*/10 * * * *"
   workflow_dispatch:
     inputs:
       pillar:
@@ -26,7 +30,7 @@ on:
         type: string
 
 concurrency:
-  group: pipeline-${{ inputs.pillar }}
+  group: pipeline-${{ inputs.run_id || 'sweep' }}
   cancel-in-progress: false
 
 env:
@@ -63,7 +67,12 @@ jobs:
       - name: Fulfil the request
         env:
           GEN_DEPLOYMENT: ${{ vars.GEN_DEPLOYMENT || 'gpt-4o-mini' }}
-        run: python request.py --run-id "$RUN_ID"
+        run: |
+          if [ -n "$RUN_ID" ]; then
+            python request.py --run-id "$RUN_ID"
+          else
+            python request.py --next-waiting
+          fi
 
       - name: Mark the run failed if the job died
         if: failure()
