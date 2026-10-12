@@ -48,12 +48,42 @@ export async function POST(req: Request) {
   if (!hasServiceKey()) {
     return NextResponse.json({ error: "Server is not configured to store briefs." }, { status: 503 });
   }
+  const body = (await req.json()) as { brief_id?: string; message?: string; form?: Record<string, any> };
+  const sb = supabaseAdmin;
+
+  // ---- the form path: the reader picked the answers the interview would ask
+  // for, so the brief is stored READY without a model call.
+  if (body.form) {
+    const f = body.form;
+    const str = (v: any, n = 600) => (typeof v === "string" && v.trim() ? v.trim().slice(0, n) : null);
+    const goal = str(f.goal);
+    const decision = str(f.decision);
+    if (!goal || !decision) {
+      return NextResponse.json({ error: "A question and the decision it supports are both required." }, { status: 400 });
+    }
+    const pillars = (Array.isArray(f.pillars) ? f.pillars : [])
+      .map((p: string) => String(p).toUpperCase()).filter((p: string) => PILLARS.includes(p));
+    const row = {
+      title: str(f.title, 160) ?? goal.slice(0, 120),
+      goal, decision, audience: str(f.audience),
+      pillars: pillars.length ? pillars : ["ELECTRONIC_WARFARE"],
+      horizon: ["H0_3", "H3_5", "H5_10", "H7_PLUS"].includes(f.horizon) ? f.horizon : null,
+      focus_terms: (Array.isArray(f.focus_terms) ? f.focus_terms : [])
+        .map((t: any) => String(t).trim()).filter(Boolean).slice(0, 12),
+      in_scope: str(f.in_scope), out_of_scope: str(f.out_of_scope),
+      depth: ["BRIEF", "STANDARD", "DEEP"].includes(f.depth) ? f.depth : "STANDARD",
+      status: "READY",
+    };
+    const { data, error } = await sb.from("report_briefs").insert(row).select("*").single();
+    if (error || !data) return NextResponse.json({ error: error?.message ?? "Could not store the brief." }, { status: 500 });
+    return NextResponse.json({ brief_id: data.id, reply: "", ready: true, brief: data });
+  }
+
   if (!hasModel()) {
     return NextResponse.json({ error: "No model deployment is configured." }, { status: 503 });
   }
-
-  const { brief_id, message } = (await req.json()) as { brief_id?: string; message: string };
-  const sb = supabaseAdmin;
+  const { brief_id, message } = body as { brief_id?: string; message: string };
+  if (!message?.trim()) return NextResponse.json({ error: "Say what the report should answer." }, { status: 400 });
 
   let id = brief_id;
   if (!id) {

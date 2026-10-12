@@ -112,3 +112,13 @@ h1,h2,h3,.display{font-family:-apple-system,BlinkMacSystemFont,'SF Pro Display',
 .ticker{display:flex;gap:26px;overflow:hidden;white-space:nowrap;color:#A1A1A6;font-size:12.5px}
 @keyframes tick{0%{transform:translateX(0)}100%{transform:translateX(-50%)}}
 .ticker-track{display:flex;gap:26px;animation:tick 40s linear infinite}
+
+/* Save as PDF: the report alone — no sidebar, toolbar, source panel or chat. */
+@media print {
+  .no-print, .shell > :not(.main) { display: none !important; }
+  .main { padding: 0 !important; }
+  body { background: #fff !important; }
+  [data-report-body] section { box-shadow: none !important; padding: 0 0 12px !important; break-inside: auto; }
+  [data-report-body] h2 { break-after: avoid; }
+  @page { margin: 18mm 16mm; }
+}

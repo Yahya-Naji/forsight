@@ -20,6 +20,7 @@ Usage: python synthesize.py --pillar ELECTRONIC_WARFARE [--replace] [--dry-run]
 from __future__ import annotations
 
 import argparse
+import os
 import re
 from collections import defaultdict
 from concurrent.futures import ThreadPoolExecutor
@@ -42,6 +43,7 @@ MIN_SIGNALS_PER_TREND = 1
 MIN_SIGNALS_PER_FINDING = 1
 MIN_FINDINGS_PER_RISK = 1
 STRONG_CLASSES = ("A", "B")
+EFFORT = os.environ.get("SYNTH_EFFORT", "high")   # reasoning effort for synthesis calls
 
 
 # --------------------------------------------------------------------------
@@ -150,12 +152,14 @@ Your job is to GROUP, not to assert. Specifically:
 - findings: what follows analytically. A finding must be a claim that COULD BE
   FALSE. Test it: if the sentence stays true with all the evidence deleted, it
   is not a finding.
-    GOOD  "Adaptation speed is becoming a readiness determinant."
-    GOOD  "Cyber assurance must be a lifecycle function, not an acceptance gate."
-    GOOD  "Regional intrusion-set density outpaces the UAE's published
-           detection coverage."
-    BAD   "Enhanced cybersecurity measures are critical."      (true regardless)
-    BAD   "Organisations must prioritise robust security."     (a platitude)
+    GOOD  "RF jamming can no longer be assumed to defeat every drone class once
+           fibre-optic control spreads."
+    GOOD  "GNSS interference is becoming a persistent operating condition in the
+           Gulf rather than an occasional hazard."
+    GOOD  "Software-defined EW moves vendor lock-in from hardware to threat
+           libraries and update rights."
+    BAD   "Electronic warfare is increasingly important."      (true regardless)
+    BAD   "Forces must prioritise robust anti-jam measures."   (a platitude)
   Every finding must discriminate: X rather than Y, X causes Y, or X is actually
   Z. Findings that merely name a topic are rejected automatically.
 - risks: what could go wrong for UAE defence readiness, traceable to findings.
@@ -208,7 +212,7 @@ def propose(scope, evidence_rows, existing_signals) -> Synthesis:
         n=len(evidence_rows), register=_format_register(evidence_rows),
         existing=existing)
     # Grouping evidence is the analytical step — strong deployment, high effort.
-    return llm.structured(prompt, Synthesis, effort="high", max_output_tokens=16000)
+    return llm.structured(prompt, Synthesis, effort=EFFORT, max_output_tokens=16000)
 
 
 # --------------------------------------------------------------------------
@@ -570,8 +574,105 @@ def synthesize_scope(sb, minter, scope, pillar, evidence_rows, sources, replace,
     admit_risks(w, minter, proposed.risks, finding_lookup, evidence_of, by_id)
     admit_uncertainties(w, minter, proposed.uncertainties)
     n_sig = len(set(signal_map.values()))
+    statement_of = {v: k for k, v in signal_map.items() if not re.fullmatch(r"S\d+", k)}
+    statement_of.update({r["id"]: r["statement"] for r in signals})
     return {"scope": scope, "evidence": len(evidence_rows),
+            "signal_rows": [(sid, statement_of.get(sid, ""), evidence_of.get(sid, []))
+                            for sid in dict.fromkeys(list(statement_of))],
             "signals": (n_sig, len(proposed.signals)),
+            "findings": (len(finding_map), len(proposed.findings)), "gaps": w.gaps}
+
+
+# --------------------------------------------------------------------------
+# branch-level findings: the analytical step a single topic cannot carry
+# --------------------------------------------------------------------------
+class FindingPass(BaseModel):
+    findings: List[FindingProposal] = Field(default_factory=list)
+    risks: List[RiskProposal] = Field(default_factory=list)
+
+
+FINDING_PROMPT = """You are the analytical stage of a strategic-foresight system for the UAE's
+Tawazun Council. Electronic Warfare is the core subject; Cybersecurity, AI and
+Procurement matter only through their effect on EW.
+
+Scope: the {branch} branch of the EW tree. Below are the admitted SIGNALS in this
+branch. Each shows its computed strength (from independent publishers) and the
+classes of the evidence behind it (A = Tier-1 fact, B = corroborated, C = single
+source, unproven).
+
+Write the FINDINGS a senior defence analyst would put in front of leadership:
+claims that connect several signals into a judgement that could turn out to be
+wrong. Then the RISKS those findings create for UAE defence readiness.
+
+A finding must:
+- rest on at least two signals where possible, cited by id (SIG-EW-04);
+- discriminate: X rather than Y, X causes Y, X is becoming Z, X no longer holds;
+- be falsifiable — if it stays true with the evidence deleted, it is not a finding;
+- rest on at least one signal backed by Class A or B evidence;
+- say what changes for EW capability, not that something "is important".
+
+The standard to meet — findings of this kind:
+  GOOD "RF jamming remains valuable, but it can no longer be assumed to defeat every
+        drone class once fibre-optic control and visual navigation spread."
+  GOOD "GNSS interference in the Gulf is shifting from an occasional hazard to a
+        persistent operating condition, so navigation resilience becomes a
+        baseline requirement rather than an upgrade."
+  GOOD "Adaptation speed — how fast threat libraries and software can be updated —
+        is becoming a readiness determinant, not a procurement detail."
+  BAD  "Electronic warfare is increasingly important."            (true regardless)
+  BAD  "The UAE must prioritise counter-UAS investment."          (a recommendation)
+  BAD  "The UAE lacks adequate jamming coverage."                 (UAE gap — not allowed)
+
+Hard rules:
+- Use only the signals below; cite them by exact id. Invented ids are rejected.
+- Never assert a UAE-specific capability gap: that needs UAE-layer evidence this
+  graph does not yet hold.
+- Do not assign likelihood, impact, strength or confidence — they are computed.
+- Risks cite the findings they follow from, by exact statement.
+- Prefer three strong findings to six weak ones.
+
+SIGNALS ({n}):
+{signals}
+"""
+
+
+def branch_prompt(branch_name, signal_rows, evidence_rows, sources, tiers):
+    by_id = {r["id"]: r for r in evidence_rows}
+    lines = []
+    for sid, statement, evs in signal_rows:
+        _, pubs, tl = rules.provenance(evs, sources, tiers)
+        classes = "".join(sorted({by_id.get(e, {}).get("class", "?") for e in evs}))
+        lines.append("  %s [%s, classes %s, %d publishers] %s" % (
+            sid, rules.signal_strength(len(pubs), 1 in tl), classes, len(pubs), statement))
+    return FINDING_PROMPT.format(branch=branch_name, n=len(lines), signals="\n".join(lines))
+
+
+def branch_findings(sb, minter, branch_id, branch_name, pillar, signal_rows, evidence_rows,
+                    sources, tiers, dry_run, proposed=None):
+    """One call over a branch's signals; findings and risks admitted by the same rules."""
+    by_id = {r["id"]: r for r in evidence_rows}
+    evidence_of = {sid: evs for sid, _, evs in signal_rows}
+    lines = []
+    for sid, statement, evs in signal_rows:
+        _, pubs, tl = rules.provenance(evs, sources, tiers)
+        classes = "".join(sorted({by_id.get(e, {}).get("class", "?") for e in evs}))
+        lines.append("  %s [%s, classes %s, %d publishers] %s" % (
+            sid, rules.signal_strength(len(pubs), 1 in tl), classes, len(pubs), statement))
+    if proposed is None:
+        proposed = llm.structured(branch_prompt(branch_name, signal_rows, evidence_rows, sources, tiers),
+                                  FindingPass, effort=EFFORT, max_output_tokens=16000)
+    print("\n== branch %s: %d signals -> proposed %d findings, %d risks"
+          % (branch_name, len(lines), len(proposed.findings), len(proposed.risks)))
+    w = Writer(sb, pillar, dry_run)
+    lookup = {sid: sid for sid, _, _ in signal_rows}
+    lookup.update({st: sid for sid, st, _ in signal_rows if st})
+    finding_map = admit_findings(w, minter, proposed.findings, lookup, evidence_of, by_id)
+    finding_lookup = dict(finding_map)
+    for f_id, sigs in finding_map.values():
+        finding_lookup[f_id] = (f_id, sigs)
+    admit_risks(w, minter, proposed.risks, finding_lookup, evidence_of, by_id)
+    return {"scope": "branch " + branch_name, "evidence": len(evidence_rows),
+            "signals": (len(lines), len(lines)),
             "findings": (len(finding_map), len(proposed.findings)), "gaps": w.gaps}
 
 
@@ -625,7 +726,7 @@ def main():
         if not topic_ids:
             print("Node %s reaches no live topics." % a.node)
             return
-        topics = {t["id"]: t for t in sb.table("topics").select("id,name,pillar")
+        topics = {t["id"]: t for t in sb.table("topics").select("id,name,pillar,node_id")
                   .in_("id", topic_ids).execute().data}
         rows = _with_publishers(rules._all(
             lambda: sb.table("evidence").select("id,claim,class,confidence,env_layer,steep,topic_id")
@@ -664,6 +765,33 @@ def main():
         results = [synthesize_scope(sb, minter, scope_of[t], topics[t]["pillar"], by_topic[t],
                                     sources, a.replace, a.dry_run, topic=t, proposed=proposals[t])
                    for t in work if t in proposals]
+
+        # Branch pass: findings across each branch's signals, grouped by home branch.
+        branch_names = {n["id"]: n["name"] for n in
+                        sb.table("nodes").select("id,name").eq("kind", "branch").execute().data}
+        tiers = rules._registry_tiers(sb)
+        by_branch = defaultdict(list)
+        for t, r in zip([t for t in work if t in proposals], results):
+            by_branch[topics[t]["node_id"]].append((t, r))
+        lens_pillar = {"CYBER": "CYBERSECURITY", "AI": "AI", "PROCUREMENT": "PROCUREMENT"}
+        jobs = {}
+        for b, members in by_branch.items():
+            sig_rows = [row for _, r in members for row in r["signal_rows"]]
+            if len(sig_rows) >= 2 and b in branch_names:
+                jobs[b] = (sig_rows, [row for t, _ in members for row in by_topic[t]])
+        print("\nbranch pass: %d branches, %d at a time" % (len(jobs), a.workers), flush=True)
+        with ThreadPoolExecutor(max_workers=max(1, a.workers)) as pool:
+            futures = {b: pool.submit(llm.structured,
+                                      branch_prompt(branch_names[b], sr, er, sources, tiers),
+                                      FindingPass, effort=EFFORT, max_output_tokens=16000)
+                       for b, (sr, er) in jobs.items()}
+            for b, f in futures.items():
+                try:
+                    results.append(branch_findings(sb, minter, b, branch_names[b],
+                                                   lens_pillar.get(b, "ELECTRONIC_WARFARE"), *jobs[b],
+                                                   sources, tiers, a.dry_run, proposed=f.result()))
+                except Exception as exc:
+                    print("  branch pass failed for %s: %s" % (b, exc), flush=True)
 
     print("\n%-58s %8s %9s %9s %5s" % ("scope", "evidence", "signals", "findings", "gaps"))
     for r in results:

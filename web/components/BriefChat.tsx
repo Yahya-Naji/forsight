@@ -1,6 +1,7 @@
 "use client";
 import { useEffect, useRef, useState } from "react";
 import { PILLAR_LABEL, label } from "./chips";
+import BriefForm, { type BriefFormValue } from "./BriefForm";
 
 type Brief = {
   id: string; title: string | null; goal: string | null; decision: string | null;
@@ -23,6 +24,8 @@ export default function BriefChat() {
   const [brief, setBrief] = useState<Brief | null>(null);
   const [ready, setReady] = useState(false);
   const [queued, setQueued] = useState<string | null>(null);
+  const [mode, setMode] = useState<"chat" | "form">("form");
+  const [formError, setFormError] = useState<string | null>(null);
   const bottom = useRef<HTMLDivElement>(null);
 
   useEffect(() => { bottom.current?.scrollIntoView({ behavior: "smooth" }); }, [turns, busy, ready]);
@@ -44,12 +47,26 @@ export default function BriefChat() {
     } finally { setBusy(false); }
   }
 
+  async function submitForm(form: BriefFormValue) {
+    setBusy(true); setFormError(null);
+    try {
+      const d = await fetch("/api/brief", {
+        method: "POST", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ form }),
+      }).then(r => r.json());
+      if (d.error) { setFormError(d.error); return; }
+      setBriefId(d.brief_id); setBrief(d.brief); setReady(true);
+    } catch {
+      setFormError("That request failed.");
+    } finally { setBusy(false); }
+  }
+
   async function run() {
     if (!briefId) return;
     setBusy(true);
     try {
       const body = new URLSearchParams({
-        pillar: brief?.pillars?.[0] ?? "CYBERSECURITY",
+        pillar: brief?.pillars?.[0] ?? "ELECTRONIC_WARFARE",
         brief_id: briefId,
         template: "TPL-DECISION-01",
         title: brief?.title ?? "Strategic brief",
@@ -64,13 +81,36 @@ export default function BriefChat() {
       {/* ── the interview ── */}
       <div className="card" style={{ padding: 0, display: "flex", flexDirection: "column", height: "calc(100vh - 190px)", minHeight: 460 }}>
         <div style={{ padding: "16px 20px", borderBottom: "1px solid var(--line)" }}>
-          <div className="kicker">New report</div>
-          <div className="display" style={{ fontWeight: 700, fontSize: 18 }}>Tell me what you need</div>
+          <div className="flex items-start justify-between gap-4">
+            <div>
+              <div className="kicker">New report</div>
+              <div className="display" style={{ fontWeight: 700, fontSize: 18 }}>
+                {mode === "form" ? "Set the brief" : "Tell me what you need"}
+              </div>
+            </div>
+            <div role="tablist" aria-label="How to set the brief" className="flex rounded-full bg-paper p-1">
+              {(["form", "chat"] as const).map(m => (
+                <button key={m} role="tab" aria-selected={mode === m} type="button" onClick={() => setMode(m)}
+                  className={`rounded-full px-3.5 py-1.5 text-[12.5px] font-semibold transition
+                    ${mode === m ? "bg-white text-ink shadow-[0_1px_3px_rgba(0,0,0,.12)]" : "text-muted hover:text-ink"}`}>
+                  {m === "form" ? "Form" : "Chat"}
+                </button>
+              ))}
+            </div>
+          </div>
           <p style={{ fontSize: 12.5, color: "var(--muted)", marginTop: 5, lineHeight: 1.5 }}>
-            Describe the report you want. I&rsquo;ll ask a few questions until I know what decision
-            it has to support, then write it from the evidence graph.
+            {mode === "form"
+              ? "Pick the answers the analyst would ask for. The report is written from the evidence graph against this brief."
+              : "Describe the report you want. I\u2019ll ask a few questions until I know what decision it has to support, then write it from the evidence graph."}
           </p>
+          {mode === "form" && formError && <p style={{ fontSize: 12.5, color: "#c0392b", marginTop: 6 }}>{formError}</p>}
         </div>
+
+        {mode === "form" ? (
+          <div style={{ flex: 1, minHeight: 0 }}>
+            <BriefForm busy={busy} onSubmit={submitForm} />
+          </div>
+        ) : (<>
 
         <div style={{ flex: 1, overflowY: "auto", padding: 20, display: "flex", flexDirection: "column", gap: 14 }}>
           {turns.length === 0 && (
@@ -111,6 +151,7 @@ export default function BriefChat() {
             }} />
           <button className="pill-btn" onClick={() => send(q)} disabled={busy || !q.trim()}>Send</button>
         </div>
+        </>)}
       </div>
 
       {/* ── the brief as it forms ── */}
@@ -125,7 +166,7 @@ export default function BriefChat() {
 
           {!brief?.goal ? (
             <p style={{ fontSize: 12.5, color: "var(--muted)", lineHeight: 1.55 }}>
-              Fills in as we talk. Nothing is written until the brief says what decision
+              {mode === "form" ? "Fills in when you set the brief." : "Fills in as we talk."} Nothing is written until the brief says what decision
               the report supports — without that, a report is only a summary.
             </p>
           ) : (

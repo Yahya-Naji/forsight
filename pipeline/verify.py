@@ -426,6 +426,14 @@ def check_gates(sb, sentences, pillar=None) -> List[Violation]:
         lowered = sentence.lower()
         if "customer validation" in lowered or "validation required" in lowered:
             continue                      # the sentence IS the gate disclosure
+        # ...however it is phrased: names a gate and says something needs validating.
+        # Deficit words still block: "the UAE lacks X; the gate requires
+        # validation" is a gap claim wearing a disclosure.
+        if (re.search(r"\b(validation )?gates?\b", lowered)
+                and (re.search(r"\brequir\w*\b.{0,40}\bvalidat\w*", lowered)
+                     or re.search(r"\b(open|blocks?|blocked|withheld)\b", lowered))
+                and not re.search(r"\b(lacks?|lacking|shortfall|deficien\w*|unable|behind|weakness|insufficient)\b", lowered)):
+            continue
         if gap_language.search(sentence):
             for gate in gates:
                 out.append(Violation(

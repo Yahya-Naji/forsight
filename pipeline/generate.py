@@ -31,6 +31,10 @@ CITATION = re.compile(r"\[(EV-[A-Z0-9-]+)\]")
 # The reference list must survive a model that drops the brackets.
 ANY_EV = re.compile(r"\b(EV-[A-Z0-9-]+)\b")
 
+INPUT_BUDGET = int(os.environ.get("GEN_INPUT_BUDGET", "260000"))   # chars of JSON per section
+GEN_EFFORT = os.environ.get("GEN_EFFORT", "medium")                  # reasoning effort per section
+GEN_MAX_OUTPUT = int(os.environ.get("GEN_MAX_OUTPUT", "32000"))     # incl. reasoning tokens
+
 SECTION_PROMPT = """You draft ONE section of a strategic foresight brief for the
 Tawazun Council (UAE). Write ONLY from the JSON data below — no outside
 knowledge, no remembered examples, no invented facts.
@@ -95,6 +99,14 @@ OPENING RULE — enforced automatically; a generic opener is rejected and redraf
   landscape...", "It is imperative that...", "Organisations must...".
   If your first sentence would still read sensibly with all the data deleted,
   it is the wrong sentence.
+
+CITATION DENSITY
+- When the data includes evidence, at least half of your sentences must be
+  CITED CLAIMS. A section that is mostly framing reads as opinion to a defence
+  reader and is sent back. Prefer one more cited fact to one more sentence of
+  context.
+- Evidence rows marked hedge_required are single-source: write "may", "suggests"
+  or "one source reports" in the sentence itself.
 
 SENTENCE DISCIPLINE — this is what gets sections rejected, so read it twice
 Every sentence you write must be ONE of these four kinds. There is no fifth
@@ -512,8 +524,14 @@ def fetch_inputs(sb, pillar, wanted, section_key, brief=None):
                 else q.eq("pillar", pillars[0])).execute().data
 
     if "evidence" in wanted:
-        take("evidence", rows_for("evidence",
-             "id,claim,class,confidence,env_layer,quote_span"))
+        ev_rows = rows_for("evidence", "id,claim,class,confidence,env_layer,quote_span")
+        # The hedging rule travels with the row, not only in the instructions:
+        # a sentence resting on this row must say it is unproven.
+        for r in ev_rows:
+            if r.get("class") == "C":
+                r["hedge_required"] = True
+                r["status"] = "single-source, not yet corroborated — hedge any sentence resting on it"
+        take("evidence", ev_rows)
     if "signals" in wanted:
         take("signals", rows_for("signals", "*"))
     if "findings" in wanted:
@@ -521,7 +539,9 @@ def fetch_inputs(sb, pillar, wanted, section_key, brief=None):
     if "uncertainties" in wanted:
         take("uncertainties", rows_for("uncertainties", "id,question,why_it_matters"))
     if "risks" in wanted:
-        take("risks", sb.table("risks").select("*").execute().data)
+        # Scoped like everything else: an EW brief quoting another pillar's
+        # risks cites ids its own graph cannot resolve.
+        take("risks", rows_for("risks", "*"))
     if "forecasts" in wanted:
         take("forecasts", sorted(rows_for("forecasts",
              "id,statement,horizon,env_layer,plausibility,confidence,"
@@ -604,7 +624,12 @@ def fetch_inputs(sb, pillar, wanted, section_key, brief=None):
         take("gaps", rows_for("research_gaps", "id,gap,raised_by"), has_id=False)
 
     if "links" in wanted:
-        take("links", sb.table("links").select("*").execute().data, has_id=False)
+        # Only links between objects this section was actually given; a link to
+        # another pillar's signal invites a citation the verifier must reject.
+        present = {r.get("id") for rows in data.values() if isinstance(rows, list)
+                   for r in rows if isinstance(r, dict) and r.get("id")}
+        take("links", [l for l in sb.table("links").select("*").execute().data
+                       if l.get("from_id") in present and l.get("to_id") in present], has_id=False)
     if "gates" in wanted:
         gates = sb.table("validation_gates").select("*").eq("status", "OPEN").execute().data
         # A cybersecurity brief has no business quoting the procurement gate.
@@ -748,7 +773,10 @@ def main():
         data, ledger = fetch_inputs(sb, pillars[0], sec["inputs"], sec["key"], brief)
         # Raw enums never reach the model, so they cannot reach the page.
         payload = json.dumps(labels.humanise(data), default=str, indent=1)
-        if len(payload) > 120000:
+        # ~65k tokens: inside every deployment's window (gpt-4o 128k, gpt-5-mini
+        # 400k). The check stays, so an oversized section fails loudly instead
+        # of being truncated.
+        if len(payload) > INPUT_BUDGET:
             raise SystemExit(
                 f"section {sec['key']}: {len(payload)} chars of input exceeds the "
                 "context budget. Link rows to sections rather than truncating — "
@@ -801,7 +829,14 @@ def main():
         while attempt <= max_retries:
             prompt = base if not failures else base + RETRY_SUFFIX.format(
                 failures="\n".join("- " + f for f in failures))
-            body_md = llm.text(prompt, effort="high", max_output_tokens=8000)
+            # Reasoning deployments spend output tokens thinking before they
+            # write; too small a ceiling returns an empty draft.
+            body_md = llm.text(prompt, effort=GEN_EFFORT, max_output_tokens=GEN_MAX_OUTPUT)
+            if not body_md.strip():
+                failures = ["The draft came back empty. Write the section in full."]
+                attempt += 1
+                log.append("  ! %s: empty draft, retry %d/%d" % (sec["key"], attempt, max_retries))
+                continue
             failures = (verify.check_section(
                             body_md, graph,
                             allow_unsourced=sec["key"] in EPISTEMIC_SECTIONS,
